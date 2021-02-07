@@ -4178,6 +4178,7 @@ mlxsw_sp_fib4_entry_hw_flags_set(struct mlxsw_sp *mlxsw_sp,
 	fri.type = fib4_entry->type;
 	fri.offload = should_offload;
 	fri.trap = !should_offload;
+	fri.offload_failed = false;
 	fib_alias_hw_flags_set(mlxsw_sp_net(mlxsw_sp), &fri);
 }
 
@@ -4201,6 +4202,7 @@ mlxsw_sp_fib4_entry_hw_flags_clear(struct mlxsw_sp *mlxsw_sp,
 	fri.type = fib4_entry->type;
 	fri.offload = false;
 	fri.trap = false;
+	fri.offload_failed = false;
 	fib_alias_hw_flags_set(mlxsw_sp_net(mlxsw_sp), &fri);
 }
 
