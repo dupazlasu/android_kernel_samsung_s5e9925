@@ -288,6 +288,22 @@ struct binder_frozen_state_info {
 	binder_uintptr_t cookie;
 	__u32            is_frozen;
 	__u32            reserved;
+
+};
+
+/* struct binder_extened_error - extended error information
+ * @id:		identifier for the failed operation
+ * @command:	command as defined by binder_driver_return_protocol
+ * @param:	parameter holding a negative errno value
+ *
+ * Used with BINDER_GET_EXTENDED_ERROR. This extends the error information
+ * returned by the driver upon a failed operation. Userspace can pull this
+ * data to properly handle specific error scenarios.
+ */
+struct binder_extended_error {
+	__u32	id;
+	__u32	command;
+	__s32	param;
 };
 
 #define BINDER_WRITE_READ		_IOWR('b', 1, struct binder_write_read)
@@ -304,6 +320,7 @@ struct binder_frozen_state_info {
 #define BINDER_GET_FROZEN_INFO		_IOWR('b', 15, struct binder_frozen_status_info)
 #define BINDER_ENABLE_ONEWAY_SPAM_DETECTION	_IOW('b', 16, __u32)
 #define BINDER_SET_SYSTEM_SERVER_PID	_IOW('b', 17, __u32)
+#define BINDER_GET_EXTENDED_ERROR	_IOWR('b', 18, struct binder_extended_error)
 
 /*
  * NOTE: Two special error codes you should check for when calling
