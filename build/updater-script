@@ -1,0 +1,14 @@
+ui_print(" ");
+ui_print("Installing ExtremeKernel...");
+ui_print(" ");
+
+ui_print("Installing boot image...");
+package_extract_file("files/boot.img", "/dev/block/by-name/boot");
+ui_print("Full Patching vendor_boot image...");
+package_extract_file("files/vendor_boot.img", "/dev/block/by-name/vendor_boot");
+ui_print("Full Patching dtbo image...");
+package_extract_file("files/dtbo.img", "/dev/block/by-name/dtbo");
+
+ui_print("Installation done!");
+ui_print("Enjoy!");
+ui_print(" ");
