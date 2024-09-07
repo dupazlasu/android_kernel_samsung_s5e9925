@@ -108,7 +108,7 @@ ccflags-y += -I$(srctree)/drivers/sensors/vl53l5/hap/output_target_sort/inc
 ccflags-y += -I$(srctree)/drivers/sensors/vl53l5/hap/pipe/inc
 ccflags-y += -I$(srctree)/drivers/sensors/vl53l5/hap/range_rotation/inc
 
-ccflags-y += -Wall -Werror -Wno-missing-braces
+ccflags-y += -Wall -Wno-missing-braces
 
 ifeq "$(TEST_ENABLE)" "TRUE"
   $(warning TEST_ENABLE=$(TEST_ENABLE))
