@@ -156,3 +156,7 @@ x509.genkey
 
 # Documentation toolchain
 sphinx_*/
+
+build/out
+toolchain/
+scripts/crypto/__pycache__/
