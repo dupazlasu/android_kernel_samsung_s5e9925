@@ -733,7 +733,9 @@ static int ems_probe(struct platform_device *pdev)
 	ontime_init(ems_kobj);
 	fclamp_init();
 	esgov_pre_init(ems_kobj);
+#if IS_ENABLED(CONFIG_CPU_FREQ_GOV_ENERGYAWARE)
 	ego_pre_init(ems_kobj);
+#endif
 	freqboost_init();
 	frt_init(ems_kobj);
 	ecs_init(ems_kobj);
