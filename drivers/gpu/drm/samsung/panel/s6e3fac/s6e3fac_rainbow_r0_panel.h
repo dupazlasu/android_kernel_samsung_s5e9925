@@ -3842,7 +3842,7 @@ static void *rainbow_r0_init_cmdtbl[] = {
 	&PKTINFO(rainbow_r0_glut_ctrl_off),
 	&TIMER_DLYINFO_BEGIN(rainbow_r0_wait_sleep_out_110msec),
 	/* temporary disable mafpc img transfer */
-#if defined(CONFIG_SUPPORT_MAFPC)
+#ifdef CONFIG_USDM_PANEL_MAFPC
 	&PKTINFO(rainbow_r0_mafpc_sr_path),
 	&DLYINFO(rainbow_r0_wait_1usec),
 	&PKTINFO(rainbow_r0_mafpc_disable),
@@ -4064,12 +4064,15 @@ static void *rainbow_r0_set_bl_2_param_cmdtbl[] = {
 	&PKTINFO(rainbow_r0_wrdisbv),
 	&PKTINFO(rainbow_r0_tset),
 	&PKTINFO(rainbow_r0_irc_mode),
-#if defined(CONFIG_SUPPORT_MAFPC)
-		&PKTINFO(rainbow_r0_mafpc_scale),
+#ifdef CONFIG_USDM_PANEL_MAFPC
+	&PKTINFO(rainbow_r0_mafpc_scale),
 #endif
 #ifdef CONFIG_SUPPORT_XTALK_MODE
 	&PKTINFO(rainbow_r0_xtalk_mode),
 #endif
+	&CONDINFO_IF(rainbow_r0_cond_is_60hs_based_fps),
+		&PKTINFO(rainbow_r0_vfp_60hs),
+	&CONDINFO_FI(rainbow_r0_cond_is_60hs_based_fps),
 };
 static DEFINE_SEQINFO(rainbow_r0_set_bl_2_param_seq,
 		rainbow_r0_set_bl_2_param_cmdtbl);
@@ -4163,7 +4166,7 @@ static void *rainbow_r0_hmd_bl_cmdtbl[] = {
 
 static void *rainbow_r0_display_on_cmdtbl[] = {
 	/* temporary disable mafpc img transfer */
-#if defined(CONFIG_SUPPORT_MAFPC)
+#ifdef CONFIG_USDM_PANEL_MAFPC
 	&KEYINFO(rainbow_r0_level2_key_enable),
 	&PKTINFO(rainbow_r0_mafpc_enable),
 	&PKTINFO(rainbow_r0_mafpc_scale),
@@ -4472,7 +4475,7 @@ static void *rainbow_r0_check_condition_cmdtbl[] = {
 	&KEYINFO(rainbow_r0_level2_key_enable),
 	&s6e3fac_dmptbl[DUMP_RDDPM],
 	&s6e3fac_dmptbl[DUMP_SELF_DIAG],
-#if defined(CONFIG_SUPPORT_MAFPC)
+#ifdef CONFIG_USDM_PANEL_MAFPC
 	&KEYINFO(rainbow_r0_level3_key_enable),
 	&s6e3fac_dmptbl[DUMP_MAFPC],
 	&s6e3fac_dmptbl[DUMP_MAFPC_FLASH],
