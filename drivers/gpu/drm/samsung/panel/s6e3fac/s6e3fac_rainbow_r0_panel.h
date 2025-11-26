@@ -3888,7 +3888,7 @@ static void *rainbow_r0_init_cmdtbl[] = {
 	&DLYINFO(rainbow_r0_wait_1usec),
 
 	/* set brightness & fps */
-	&SEQINFO(rainbow_r0_set_bl_1_param_seq),
+	//&SEQINFO(rainbow_r0_set_bl_1_param_seq), // Empty sequence, skipped by USDM
 	&SEQINFO(rainbow_r0_set_fps_param_seq),
 	&PKTINFO(rainbow_r0_gamma_update_enable),
 #ifdef CONFIG_USDM_PANEL_HMD
@@ -4078,7 +4078,7 @@ static DEFINE_SEQINFO(rainbow_r0_set_bl_2_param_seq,
 static void *rainbow_r0_set_bl_cmdtbl[] = {
 	&KEYINFO(rainbow_r0_level1_key_enable),
 	&KEYINFO(rainbow_r0_level2_key_enable),
-	&SEQINFO(rainbow_r0_set_bl_1_param_seq),
+	//&SEQINFO(rainbow_r0_set_bl_1_param_seq), // Empty sequence, skipped by USDM
 	&SEQINFO(rainbow_r0_set_bl_2_param_seq),
 	&PKTINFO(rainbow_r0_gamma_update_enable),
 	&KEYINFO(rainbow_r0_level2_key_disable),
@@ -4118,7 +4118,7 @@ static void *rainbow_r0_display_mode_cmdtbl[] = {
 	&CONDINFO_IF(rainbow_r0_cond_is_panel_state_not_lpm),
 		&KEYINFO(rainbow_r0_level1_key_enable),
 		&KEYINFO(rainbow_r0_level2_key_enable),
-		&SEQINFO(rainbow_r0_set_bl_1_param_seq),
+		//&SEQINFO(rainbow_r0_set_bl_1_param_seq), // Empty sequence, skipped by USDM
 		&SEQINFO(rainbow_r0_set_fps_param_seq),
 		&PKTINFO(rainbow_r0_gamma_update_enable),
 		&SEQINFO(rainbow_r0_set_bl_2_param_seq),
@@ -4257,7 +4257,7 @@ static void *rainbow_r0_alpm_exit_cmdtbl[] = {
 static void *rainbow_r0_alpm_exit_after_cmdtbl[] = {
 	&KEYINFO(rainbow_r0_level1_key_enable),
 	&KEYINFO(rainbow_r0_level2_key_enable),
-	&SEQINFO(rainbow_r0_set_bl_1_param_seq),
+	//&SEQINFO(rainbow_r0_set_bl_1_param_seq), // Empty sequence, skipped by USDM
 	&SEQINFO(rainbow_r0_set_fps_param_seq),
 	&PKTINFO(rainbow_r0_gamma_update_enable),
 	&SEQINFO(rainbow_r0_set_bl_2_param_seq),
