@@ -15,11 +15,11 @@
 
 #include "s6e3fac_dimming.h"
 
-#ifdef CONFIG_SUPPORT_MAFPC
+#ifdef CONFIG_USDM_PANEL_MAFPC
 #if defined(CONFIG_MCD_PANEL_FACTORY)
-#include "s6e3fac_rainbow_abc_fac_img.h"
+#include "s6e3fac_abc_fac_img.h"
 #else
-#include "s6e3fac_rainbow_abc_img.h"
+#include "s6e3fac_abc_img.h"
 #endif
 #endif
 

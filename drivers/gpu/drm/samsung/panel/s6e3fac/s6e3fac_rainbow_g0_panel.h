@@ -3793,7 +3793,7 @@ static u8 RAINBOW_G0_DEFAULT_SR_PATH[] = {
 };
 static DEFINE_STATIC_PACKET(rainbow_g0_default_sr_path, DSI_PKT_TYPE_WR, RAINBOW_G0_DEFAULT_SR_PATH, 0);
 
-static DEFINE_STATIC_PACKET_WITH_OPTION(rainbow_g0_mafpc_default_img, DSI_PKT_TYPE_SR_FAST,
+static DEFINE_STATIC_PACKET_WITH_OPTION(rainbow_g0_mafpc_default_img, DSI_PKT_TYPE_WR_SR_FAST,
 	S6E3FAC_MAFPC_DEFAULT_IMG, 0, PKT_OPTION_SR_ALIGN_12);
 
 static u8 RAINBOW_G0_MAFPC_GRAM_SIZE[] = {
@@ -4284,7 +4284,7 @@ static void *rainbow_g0_init_cmdtbl[] = {
 	&PKTINFO(rainbow_g0_te_frame_sel),
 	&PKTINFO(rainbow_g0_gamma_update_enable),
 #ifdef CONFIG_USDM_PANEL_COPR
-	&SEQINFO(rainbow_g0_copr_seqtbl[COPR_SET_SEQ]),
+	&SEQINFO(rainbow_g0_copr_seqtbl[0]),
 #endif
 	&KEYINFO(rainbow_g0_level3_key_disable),
 	&KEYINFO(rainbow_g0_level2_key_disable),

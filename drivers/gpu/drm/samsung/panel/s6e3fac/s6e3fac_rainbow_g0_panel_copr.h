@@ -69,16 +69,8 @@
 #define S6E3FAC_RAINBOW_G0_COPR_ROI5_X_E	(1079)
 #define S6E3FAC_RAINBOW_G0_COPR_ROI5_Y_E	(2339)
 
-static struct seqinfo rainbow_g0_copr_seqtbl[MAX_COPR_SEQ];
 static struct pktinfo PKTINFO(rainbow_g0_level2_key_enable);
 static struct pktinfo PKTINFO(rainbow_g0_level2_key_disable);
-
-/* ===================================================================================== */
-/* ============================== [S6E3FAC MAPPING TABLE] ============================== */
-/* ===================================================================================== */
-static struct maptbl rainbow_g0_copr_maptbl[] = {
-	[COPR_MAPTBL] = DEFINE_0D_MAPTBL(rainbow_g0_copr_table, init_common_table, NULL, copy_copr_maptbl),
-};
 
 /* ===================================================================================== */
 /* ============================== [S6E3FAC COMMAND TABLE] ============================== */
@@ -90,6 +82,15 @@ static u8 RAINBOW_G0_COPR[] = {
 	0x00, 0x01, 0x00, 0x02, 0x97, 0x00, 0xCF, 0x02, 0xBB, 0x00, 0xEF, 0x00, 0x00, 0x00, 0x00, 0x04,
 	0x37, 0x09, 0x23, 0x02, 0x87, 0x00, 0xBB, 0x02, 0xCB, 0x01, 0x03, 0x02, 0x77, 0x00, 0xAF, 0x02,
 	0xDB, 0x01, 0x0F, 0x00, 0x00, 0x00, 0x00, 0x04, 0x37, 0x09, 0x23
+};
+
+/* ===================================================================================== */
+/* ============================== [S6E3FAC MAPPING TABLE] ============================== */
+/* ===================================================================================== */
+static u8 rainbow_g0_copr_table[ARRAY_SIZE(RAINBOW_G0_COPR)];
+
+static struct maptbl rainbow_g0_copr_maptbl[] = {
+	[COPR_MAPTBL] = __OLED_MAPTBL_COPY_ONLY_INITIALIZER(rainbow_g0_copr_table, &OLED_FUNC(OLED_MAPTBL_COPY_COPR)),
 };
 
 static DEFINE_PKTUI(rainbow_g0_copr, &rainbow_g0_copr_maptbl[COPR_MAPTBL], 1);
@@ -109,10 +110,10 @@ static void *rainbow_g0_get_copr_dsi_cmdtbl[] = {
 	&s6e3fac_restbl[RES_COPR_DSI],
 };
 
-static struct seqinfo rainbow_g0_copr_seqtbl[MAX_COPR_SEQ] = {
-	[COPR_SET_SEQ] = SEQINFO_INIT("set-copr-seq", rainbow_g0_set_copr_cmdtbl),
-	[COPR_SPI_GET_SEQ] = SEQINFO_INIT("get-copr-spi-seq", rainbow_g0_get_copr_spi_cmdtbl),
-	[COPR_DSI_GET_SEQ] = SEQINFO_INIT("get-copr-dsi-seq", rainbow_g0_get_copr_dsi_cmdtbl),
+static struct seqinfo rainbow_g0_copr_seqtbl[] = {
+	SEQINFO_INIT("set-copr-seq", rainbow_g0_set_copr_cmdtbl),
+	SEQINFO_INIT("get-copr-spi-seq", rainbow_g0_get_copr_spi_cmdtbl),
+	SEQINFO_INIT("get-copr-dsi-seq", rainbow_g0_get_copr_dsi_cmdtbl),
 };
 
 static struct panel_copr_data s6e3fac_rainbow_g0_copr_data = {
