@@ -1,0 +1,55 @@
+menuconfig USDM_PANEL_S6E3FAC
+	tristate "S6E3FAC DDI Panel Driver"
+	depends on USDM_PANEL
+	depends on USDM_PANEL_OLED_COMMON
+	default n
+	help
+		This enables S6E3FAC DDI dependent panel drivers of
+		common panel driver. say Y, if you have a panel based on
+		the S6E3FAC DDI.
+
+
+########## FOR KUNIT ##########
+
+config S6E3FAC_TEST
+	bool "KUnit test for s6e3fac ddi driver"
+	depends on SEC_KUNIT
+	help
+	  TODO: Describe config fully.
+
+config S6E3FAC_COPR_TEST
+	bool "KUnit test for s6e3fac ddi copr driver"
+	depends on SEC_KUNIT && USDM_PANEL_COPR
+	help
+	  TODO: Describe config fully.
+
+config S6E3FAC_MDNIE_TEST
+	bool "KUnit test for s6e3fac ddi mdnie driver"
+	depends on SEC_KUNIT && USDM_MDNIE
+	help
+	  TODO: Describe config fully.
+
+config S6E3FAC_MAFPC_TEST
+	bool "KUnit test for s6e3fac ddi mafpc driver"
+	depends on SEC_KUNIT && USDM_PANEL_MAFPC
+	help
+	  TODO: Describe config fully.
+
+config S6E3FAC_FAC_TEST
+	bool "KUnit test for s6e3fac ddi factory mode driver"
+	depends on SEC_KUNIT
+	help
+	  TODO: Describe config fully.
+
+config S6E3FAC_AOD_TEST
+	bool "KUnit test for s6e3fac ddi aod driver"
+	depends on SEC_KUNIT && USDM_PANEL_LPM
+	help
+	  TODO: Describe config fully.
+
+
+
+########## FOR KUNIT ##########
+
+
+
