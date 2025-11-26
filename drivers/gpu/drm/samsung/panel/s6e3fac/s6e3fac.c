@@ -126,7 +126,7 @@ __visible_for_testing int generate_brt_step_table(struct brightness_table *brt_t
 
 #endif /* CONFIG_USDM_PANEL_DIMMING */
 
-__visible_for_testing int find_s6e3fac_vrr(struct panel_vrr *vrr)
+int find_s6e3fac_vrr(struct panel_vrr *vrr)
 {
 	size_t i;
 
