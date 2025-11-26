@@ -20,9 +20,8 @@ subdir-ccflags-y += -I$(srctree)/$(src)/../oled_common
 # obj-$(CONFIG_USDM_PANEL_S6E3FAC) += mcd-panel-s6e3fac_rainbow_r0.o
 # endif
 
-# rainbow_g0 - TODO: USDM conversion
-# ifeq ($(CONFIG_MODEL_G0S), y)
-# mcd-panel-s6e3fac_rainbow_g0-y += s6e3fac.o s6e3fac_rainbow_g0.o
-# obj-$(CONFIG_USDM_PANEL_S6E3FAC) += mcd-panel-s6e3fac_rainbow_g0.o
-# endif
+ifeq ($(CONFIG_MACH_G0S_EUR_OPENX), y)
+mcd-panel-s6e3fac_rainbow_g0-y += s6e3fac.o s6e3fac_rainbow_g0.o
+obj-$(CONFIG_USDM_PANEL_S6E3FAC) += mcd-panel-s6e3fac_rainbow_g0.o
+endif
 
