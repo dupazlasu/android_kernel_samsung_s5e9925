@@ -89,7 +89,7 @@ struct bpf_prog *fuse_get_bpf_prog(struct file *file)
 						 false);
 
 		/* Close the fd, which also closes the file */
-		__close_fd(current->files, task_fd);
+		close_fd(task_fd);
 		file = NULL;
 	}
 #endif
