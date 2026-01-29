@@ -1895,7 +1895,7 @@ static inline int fuse_bpf_run(struct bpf_prog *prog, struct fuse_bpf_args *fba)
 	int ret;
 
 	migrate_disable();
-	ret = BPF_PROG_RUN(prog, fba);
+	ret = bpf_prog_run(prog, fba);
 	migrate_enable();
 	return ret;
 }
