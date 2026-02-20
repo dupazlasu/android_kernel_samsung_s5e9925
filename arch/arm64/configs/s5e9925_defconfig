@@ -1393,14 +1393,21 @@ CONFIG_NET_SCH_NETEM=y
 # CONFIG_NET_SCH_QFQ is not set
 CONFIG_NET_SCH_CODEL=y
 CONFIG_NET_SCH_FQ_CODEL=y
-# CONFIG_NET_SCH_CAKE is not set
+CONFIG_NET_SCH_CAKE=y
 CONFIG_NET_SCH_FQ=y
 # CONFIG_NET_SCH_HHF is not set
 # CONFIG_NET_SCH_PIE is not set
 CONFIG_NET_SCH_INGRESS=y
 # CONFIG_NET_SCH_PLUG is not set
 # CONFIG_NET_SCH_ETS is not set
-# CONFIG_NET_SCH_DEFAULT is not set
+CONFIG_NET_SCH_DEFAULT=y
+# CONFIG_DEFAULT_FQ is not set
+# CONFIG_DEFAULT_CODEL is not set
+# CONFIG_DEFAULT_FQ_CODEL is not set
+# CONFIG_DEFAULT_SFQ is not set
+CONFIG_DEFAULT_CAKE=y
+# CONFIG_DEFAULT_PFIFO_FAST is not set
+CONFIG_DEFAULT_NET_SCH="cake"
 
 #
 # Classification
@@ -7545,6 +7552,13 @@ CONFIG_SENSORS_SUPPORT_SLSI=y
 CONFIG_FUELGAUGE_MAX77705=m
 # CONFIG_EN_OOPS is not set
 # end of Fuelgauge drivers
+
+#
+# KernelSU
+#
+# CONFIG_KSU is not set
+# CONFIG_KSU_DEBUG is not set
+# end of KernelSU
 # end of Device Drivers
 
 #
