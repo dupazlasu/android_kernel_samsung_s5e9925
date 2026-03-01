@@ -17,7 +17,7 @@ Options:
     -m, --model [value]    Specify the model code of the phone
     -k, --ksu [y/N]        Include KernelSU
     -r, --recovery [y/N]   Compile kernel for an Android Recovery	
-    -d, --debug [y/N]      Force SELinux status to permissive and add superuser driver, DO NOT USE UNLESS A DEV!															 
+    -p, --permissive [y/N]      Force SELinux status to permissive and add superuser driver, DO NOT USE UNLESS A DEV!															 
 EOF
 }
 
@@ -31,7 +31,7 @@ while [[ $# -gt 0 ]]; do
             KSU_OPTION="$2"
             shift 2
             ;;
-        --debug|-d)
+        --permissive|-p)
             DEBUG_OPTION="$2"
             shift 2
             ;;
@@ -127,17 +127,17 @@ build_kernel() {
         echo "Recovery: Y"
     fi
 
-    if [ -z "$DEBUG" ]; then
-        echo "DEBUG: No"
+    if [ -z "$PERMISSIVE" ]; then
+        echo "PERMISSIVE: No"
     else
-        echo "DEBUG: Yes"
+        echo "PERMISSIVE: Yes"
     fi
 
     echo "-----------------------------------------------"
     echo "Building kernel using "s5e9925_defconfig""
     echo "Generating configuration file..."
     echo "-----------------------------------------------"
-    make ${MAKE_ARGS} -j$CORES s5e9925_defconfig $MODEL.config  $RECOVERY $KSU $DEBUG || abort
+    make ${MAKE_ARGS} -j$CORES s5e9925_defconfig $MODEL.config  $RECOVERY $KSU $PERMISSIVE || abort
 
     echo "Building kernel..."
     echo "-----------------------------------------------"
