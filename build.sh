@@ -32,7 +32,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --permissive|-p)
-            DEBUG_OPTION="$2"
+            PERMISSIVE_OPTION="$2"
             shift 2
             ;;
         --recovery|-r)
@@ -102,8 +102,8 @@ if [[ "$KSU_OPTION" == "y" ]]; then
     KSU=ksu.config
 fi
 
-if [[ "$DEBUG_OPTION" == "y" ]]; then
-    DEBUG=debug.config
+if [[ "$PERMISSIVE_OPTION" == "y" ]]; then
+    PERMISSIVE=debug.config
 fi
 
 rm -rf build/out/$MODEL
@@ -137,7 +137,7 @@ build_kernel() {
     echo "Building kernel using "s5e9925_defconfig""
     echo "Generating configuration file..."
     echo "-----------------------------------------------"
-    make ${MAKE_ARGS} -j$CORES s5e9925_defconfig $MODEL.config  $RECOVERY $KSU $PERMISSIVE || abort
+    make ${MAKE_ARGS} -j$CORES s5e9925_defconfig $MODEL.config $RECOVERY $KSU $PERMISSIVE || abort
 
     echo "Building kernel..."
     echo "-----------------------------------------------"
