@@ -22,6 +22,7 @@
 #include <linux/pm_opp.h>
 #include <linux/ems.h>
 #include <linux/binfmts.h>
+#include <linux/sched/signal.h>
 
 #include <soc/samsung/exynos-cpupm.h>
 #include <soc/samsung/exynos-ufcc.h>
@@ -712,6 +713,56 @@ static void ufc_update_max_limit(void);
 static int ufc_update_min_limit(void);
 static int ufc_update_little_max_limit(void);
 
+/*
+ * Blocked userspace throttlers should not leave a stale UFC max cap armed
+ * for later reapplication through the strict/min-limit path.
+ */
+static void ufc_reset_max_limit_state(void)
+{
+	ufc_req[USERSPACE].freq[PM_QOS_MAX_LIMIT] = RELEASE;
+	ufc_req[USERSPACE].freq[PM_QOS_OVER_LIMIT] = RELEASE;
+	ufc_req[USERSPACE].freq[PM_QOS_LITTLE_MAX_LIMIT] = RELEASE;
+}
+
+#if !defined(CONFIG_SOC_S5E8825_THERMAL_OVERRIDE)
+static void ufc_clear_max_limit_state(void)
+{
+	if (ufc_req[USERSPACE].freq[PM_QOS_MAX_LIMIT] == RELEASE &&
+	    ufc_req[USERSPACE].freq[PM_QOS_OVER_LIMIT] == RELEASE &&
+	    ufc_req[USERSPACE].freq[PM_QOS_LITTLE_MAX_LIMIT] == RELEASE)
+		return;
+
+	mutex_lock(&ufc.lock);
+	ufc_reset_max_limit_state();
+	ufc_update_max_limit();
+	ufc_update_little_max_limit();
+	mutex_unlock(&ufc.lock);
+}
+#endif
+
+static bool ufc_group_controls_frequencies(struct task_struct *tsk)
+{
+	struct task_struct *thread;
+
+	if (!freq_control_blocking_enabled())
+		return false;
+
+	if (task_controls_frequencies(tsk))
+		return true;
+
+	rcu_read_lock();
+	for_each_thread(tsk->group_leader, thread) {
+		if (!task_is_frequency_controller(thread))
+			continue;
+
+		rcu_read_unlock();
+		return true;
+	}
+	rcu_read_unlock();
+
+	return false;
+}
+
 static void reset_limit_stat(void) {
 	int user, type;
 
@@ -1013,6 +1064,9 @@ static void ufc_update_max_limit(void)
 		return;
 	}
 
+	if (ufc_group_controls_frequencies(current))
+		ufc_reset_max_limit_state();
+
 	target_freq = ufc_determine_max_limit();
 	ufc.curr_max_vfreq = target_freq;
 
@@ -1133,8 +1187,10 @@ static ssize_t cpufreq_max_limit_store(struct kobject *kobj,
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
 
-	if (task_controls_frequencies(current))
+	if (ufc_group_controls_frequencies(current)) {
+		ufc_clear_max_limit_state();
 		return count;
+	}
 
 	ufc_update_request(USERSPACE, PM_QOS_MAX_LIMIT, input);
 
@@ -1229,8 +1285,10 @@ static ssize_t little_max_limit_store(struct kobject *kobj, const char *buf,
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
 
-	if (task_controls_frequencies(current))
+	if (ufc_group_controls_frequencies(current)) {
+		ufc_clear_max_limit_state();
 		return count;
+	}
 
 	ufc_update_request(USERSPACE, PM_QOS_LITTLE_MAX_LIMIT, input);
 
@@ -1249,6 +1307,11 @@ static ssize_t over_limit_store(struct kobject *kobj, const char *buf,
 
 	if (!sscanf(buf, "%8d", &input))
 		return -EINVAL;
+
+	if (ufc_group_controls_frequencies(current)) {
+		ufc_clear_max_limit_state();
+		return count;
+	}
 
 	ufc.prio_vfreq[PM_QOS_OVER_LIMIT] = input;
 	ufc_update_request(USERSPACE, PM_QOS_OVER_LIMIT, input);
