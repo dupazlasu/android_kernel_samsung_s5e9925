@@ -170,8 +170,8 @@ build_boot() {
     RAMDISK_00=build/out/$MODEL/boot_ramdisk
     KERNEL=build/out/$MODEL/Image
     HEADER_VERSION=4
-    OS_VERSION=14.0.0
-    OS_PATCH_LEVEL=2024-08
+    OS_VERSION=16.0.0
+    OS_PATCH_LEVEL=2026-03
     CMDLINE=""
 
 	python3 toolchain/mkbootimg/mkbootimg.py --header_version $HEADER_VERSION --cmdline "$CMDLINE" --ramdisk $RAMDISK_00 \
@@ -327,7 +327,7 @@ build_zip() {
     cp build/update-binary build/out/$MODEL/zip/META-INF/com/google/android/update-binary
     cp build/updater-script build/out/$MODEL/zip/META-INF/com/google/android/updater-script
 
-    version=$(grep -o 'CONFIG_LOCALVERSION="[^"]*"' arch/arm64/configs/$KERNEL_DEFCONFIG | cut -d '"' -f 2)
+    version=$(grep -o 'CONFIG_LOCALVERSION="[^"]*"' arch/arm64/configs/s5e9925_defconfig | cut -d '"' -f 2)
     version=${version:1}
     pushd build/out/$MODEL/zip > /dev/null
     DATE=`date +"%d-%m-%Y_%H-%M-%S"`
