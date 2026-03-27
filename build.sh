@@ -52,7 +52,7 @@ pushd $(dirname "$0") > /dev/null
 CORES=`cat /proc/cpuinfo | grep -c processor`
 
 # Define toolchain variables
-CLANG_DIR=$PWD/toolchain/clang-r584948b
+CLANG_DIR=$PWD/toolchain/clang-r596125
 PATH=$CLANG_DIR/bin:$PATH
 
 # Check if toolchain exists
@@ -63,9 +63,9 @@ if [ ! -f "$CLANG_DIR/bin/clang-22" ]; then
     rm -rf $CLANG_DIR
     mkdir -p $CLANG_DIR
     pushd $CLANG_DIR > /dev/null
-    curl -LJOk https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/mirror-goog-main-llvm-toolchain-source/clang-r584948b.tar.gz
-    tar xf linux-x86-mirror-goog-main-llvm-toolchain-source-clang-r584948b.tar.gz
-    rm linux-x86-mirror-goog-main-llvm-toolchain-source-clang-r584948b.tar.gz
+    curl -LJOk https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz
+    tar xf linux-x86-mirror-goog-main-llvm-toolchain-source-clang-r596125.tar.gz
+    rm linux-x86-mirror-goog-main-llvm-toolchain-source-clang-r596125.tar.gz
     echo "Cleaning up..."
     popd > /dev/null
 fi
