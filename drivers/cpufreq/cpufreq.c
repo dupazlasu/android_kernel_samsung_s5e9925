@@ -31,6 +31,7 @@
 #include <linux/tick.h>
 #include <trace/events/power.h>
 #include <trace/hooks/cpufreq.h>
+#include <linux/binfmts.h>
 
 static LIST_HEAD(cpufreq_policy_list);
 
