@@ -113,18 +113,17 @@ mkdir -p build/out/$MODEL/zip/META-INF/com/google/android
 build_kernel() {
     # Build kernel image
     echo "-----------------------------------------------"
-    echo "Defconfig: "s5e9925_defconfig""
 
     if [ -z "$KSU" ]; then
-        echo "KSU: N"
+        echo "KSU: No"
     else
-        echo "KSU: $KSU"
+        echo "KSU: Yes"
     fi
 
     if [ -z "$RECOVERY" ]; then
-    echo "Recovery: N"
+        echo "Recovery: No"
     else
-        echo "Recovery: Y"
+        echo "Recovery: Yes"
     fi
 
     if [ -z "$PERMISSIVE" ]; then
@@ -171,7 +170,7 @@ build_boot() {
     KERNEL=build/out/$MODEL/Image
     HEADER_VERSION=4
     OS_VERSION=16.0.0
-    OS_PATCH_LEVEL=2026-03
+    OS_PATCH_LEVEL=2026-05
     CMDLINE=""
 
 	python3 toolchain/mkbootimg/mkbootimg.py --header_version $HEADER_VERSION --cmdline "$CMDLINE" --ramdisk $RAMDISK_00 \
@@ -347,8 +346,8 @@ build_dtb
 build_modules
 
 if [ -z "$RECOVERY" ]; then				   
-build_vendor_boot
-build_zip
+    build_vendor_boot
+    build_zip
 fi 
 
 popd > /dev/null
