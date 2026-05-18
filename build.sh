@@ -1,210 +1,221 @@
 #!/bin/bash
 
-abort()
+ABORT()
 {
-    cd -
     echo "-----------------------------------------------"
     echo "Kernel compilation failed! Exiting..."
     echo "-----------------------------------------------"
-    exit -1
+    exit 1
 }
 
-unset_flags()
+_PRINT_HELP()
 {
-    cat << EOF
-Usage: $(basename "$0") [options]
-Options:
-    -m, --model [value]    Specify the model code of the phone
-    -k, --ksu [y/N]        Include KernelSU
-    -r, --recovery [y/N]   Compile kernel for an Android Recovery	
-    -p, --permissive [y/N]      Force SELinux status to permissive and add superuser driver, DO NOT USE UNLESS A DEV!															 
-EOF
+    echo "Usage: $(basename "$0") <-m, --model model> [options]"
+    echo "Options:"
+    echo "-m, --model [value]    Specify the model code of the phone"
+    echo "-k, --ksu              Include KernelSU Next"
+    echo "-r, --recovery         Compile kernel for an Android Recovery"	
+    echo "-p, --permissive       Force SELinux status to permissive and add superuser driver, DO NOT USE UNLESS A DEV!"
 }
+
+MODEL=""
+FRAGMENTS=""
+KSU=false
+PERMISSIVE=false
+RECOVERY=false
 
 while [[ $# -gt 0 ]]; do
-    case "$1" in
-        --model|-m)
-            MODEL="$2"
-            shift 2
-            ;;
-        --ksu|-k)
-            KSU_OPTION="$2"
-            shift 2
-            ;;
-        --permissive|-p)
-            PERMISSIVE_OPTION="$2"
-            shift 2
-            ;;
-        --recovery|-r)
-            RECOVERY_OPTION="$2"
-            shift 2
-            ;;
-        *)\
-            unset_flags
-            exit 1
-            ;;
-    esac
+    if [[ "$1" == "-m" ]] || [[ "$1" == "--model" ]]; then
+        MODEL="$2"
+        FRAGMENTS+="$MODEL.config "
+        shift
+    elif [[ "$1" == "-k" ]] || [[ "$1" == "--ksu" ]]; then
+        KSU=true
+    elif [[ "$1" == "-p" ]] || [[ "$1" == "--permissive" ]]; then
+        PERMISSIVE=true
+    elif [[ "$1" == "-r" ]] || [[ "$1" == "--recovery" ]]; then
+        RECOVERY=true
+    else
+        _PRINT_HELP
+        exit 1
+    fi
+
+    shift
 done
 
 echo "Preparing the build environment..."
 
-pushd $(dirname "$0") > /dev/null
-CORES=`cat /proc/cpuinfo | grep -c processor`
+pushd "$(dirname "$0")" > /dev/null || exit 1
 
 # Define toolchain variables
-CLANG_DIR=$PWD/toolchain/clang-r596125
-PATH=$CLANG_DIR/bin:$PATH
+CLANG_DIR="$(pwd)/toolchain/clang-r596125"
+PATH="$CLANG_DIR/bin:$PATH"
 
 # Check if toolchain exists
-if [ ! -f "$CLANG_DIR/bin/clang-22" ]; then
+if [[ ! -f "$CLANG_DIR/bin/clang-22" ]]; then
     echo "-----------------------------------------------"
     echo "Toolchain not found! Downloading..."
     echo "-----------------------------------------------"
-    rm -rf $CLANG_DIR
-    mkdir -p $CLANG_DIR
-    pushd $CLANG_DIR > /dev/null
-    curl -LJOk https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz
-    tar xf linux-x86-mirror-goog-main-llvm-toolchain-source-clang-r596125.tar.gz
-    rm linux-x86-mirror-goog-main-llvm-toolchain-source-clang-r596125.tar.gz
-    echo "Cleaning up..."
-    popd > /dev/null
+    if [[ -d "$CLANG_DIR" ]]; then
+        rm -rf "$CLANG_DIR"
+    fi
+    mkdir -p "$CLANG_DIR"
+
+    curl -L -o "$CLANG_DIR/clang.tar.gz" "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz" || {
+        echo "Failed to download clang"
+        exit 1
+    }
+    tar xf "$CLANG_DIR/clang.tar.gz" -C "$CLANG_DIR" || {
+        echo "Failed to extract clang"
+        exit 1
+    }
+    rm "$CLANG_DIR/clang.tar.gz"
 fi
 
-MAKE_ARGS="
-LLVM=1 \
-LLVM_IAS=1 \
-ARCH=arm64 \
-O=out
-"
+MAKE_CMD="make "
+MAKE_CMD+="LLVM=1 "
+MAKE_CMD+="LLVM_IAS=1 "
+MAKE_CMD+="ARCH=arm64 "
+MAKE_CMD+="O=out "
+MAKE_CMD+="-j$(nproc --all)"
 
-# Define specific variables
-case $MODEL in
-r0s)
-    BOARD=SRPUH13A011
-;;
-g0s)
-    BOARD=SRPUG08A011
-;;
-b0s)
-    BOARD=SRPUH13B009
-;;
-*)
-    unset_flags
-    exit
-esac
-
-if [[ "$RECOVERY_OPTION" == "y" ]]; then
-    RECOVERY=recovery.config
-    KSU_OPTION=n
+if $RECOVERY; then
+    FRAGMENTS+="recovery.config "
+    if $KSU; then
+        KSU=false
+    fi
 fi
 
-if [[ "$KSU_OPTION" == "y" ]]; then
-    KSU=ksu.config
+if $KSU; then
+    FRAGMENTS+="ksu.config "
 fi
 
-if [[ "$PERMISSIVE_OPTION" == "y" ]]; then
-    PERMISSIVE=debug.config
+if $PERMISSIVE; then
+    FRAGMENTS+="debug.config "
 fi
 
-rm -rf build/out/$MODEL
-mkdir -p build/out/$MODEL/zip/files
-mkdir -p build/out/$MODEL/zip/META-INF/com/google/android
+if [[ -d "$(pwd)/build/out/$MODEL" ]]; then
+    rm -rf "build/out/$MODEL"
+fi
 
-build_kernel() {
+mkdir -p "build/out/$MODEL/zip/files"
+mkdir -p "build/out/$MODEL/zip/META-INF/com/google/android"
+
+BUILD_KERNEL() {
     # Build kernel image
     echo "-----------------------------------------------"
 
-    if [ -z "$KSU" ]; then
-        echo "KSU: No"
+    echo -n "KSU: "
+    if $KSU; then
+        echo "Yes"
     else
-        echo "KSU: Yes"
+        echo "No"
     fi
 
-    if [ -z "$RECOVERY" ]; then
-        echo "Recovery: No"
+    echo -n "Recovery: "
+    if $RECOVERY; then
+        echo "Yes"
     else
-        echo "Recovery: Yes"
+        echo "No"
     fi
 
-    if [ -z "$PERMISSIVE" ]; then
-        echo "PERMISSIVE: No"
+    echo -n "Permissive: "
+    if $PERMISSIVE; then
+        echo "Yes"
     else
-        echo "PERMISSIVE: Yes"
+        echo "No"
     fi
 
     echo "-----------------------------------------------"
-    echo "Building kernel using "s5e9925_defconfig""
+    echo "Building kernel using \"s5e9925_defconfig\""
     echo "Generating configuration file..."
     echo "-----------------------------------------------"
-    make ${MAKE_ARGS} -j$CORES s5e9925_defconfig $MODEL.config $RECOVERY $KSU $PERMISSIVE || abort
+    $MAKE_CMD s5e9925_defconfig $FRAGMENTS || return 1
 
     echo "Building kernel..."
     echo "-----------------------------------------------"
-    make ${MAKE_ARGS} -j$CORES || abort
+    $MAKE_CMD || return 1
 }
 
-build_boot() {
+BUILD_BOOT() {
+    KERNEL="build/out/$MODEL/Image"
 
-    cp -a out/arch/arm64/boot/Image build/out/$MODEL
+    cp -a "out/arch/arm64/boot/Image" "$KERNEL" || return 1
 
-    if [ -z "$RECOVERY" ]; then			   
+    if $RECOVERY; then
+        return 0
+    fi
+
     echo "-----------------------------------------------"
     echo "Building boot.img RAMDisk..."
-    mkdir -p build/out/$MODEL/boot_ramdisk00
+    mkdir -p "build/out/$MODEL/boot_ramdisk00"
 
     # Copy common files for boot.img's RAMDisk
-    cp -a build/ramdisk/boot/boot_ramdisk00 build/out/$MODEL
-    
-    # Copy device build.prop file for boot.img's RAMDisk
-    cp -a build/ramdisk/boot/device/$MODEL/* build/out/$MODEL/boot_ramdisk00/system/etc/ramdisk
+    cp -a "build/ramdisk/boot/boot_ramdisk00" "build/out/$MODEL" || return 1
 
-    pushd build/out/$MODEL/boot_ramdisk00 > /dev/null
-    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > ../boot_ramdisk || abort
-    popd > /dev/null
+    # Copy device build.prop file for boot.img's RAMDisk
+    cp -a "build/ramdisk/boot/device/$MODEL/"* "build/out/$MODEL/boot_ramdisk00/system/etc/ramdisk" || return 1
+
+    (
+    cd "build/out/$MODEL/boot_ramdisk00" || return 1
+    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > "../boot_ramdisk" || return 1
+    ) || return 1
 
     echo "-----------------------------------------------"
     echo "Building boot.img..."
 
-    OUTPUT_FILE=build/out/$MODEL/boot.img
-    RAMDISK_00=build/out/$MODEL/boot_ramdisk
-    KERNEL=build/out/$MODEL/Image
-    HEADER_VERSION=4
-    OS_VERSION=16.0.0
-    OS_PATCH_LEVEL=2026-05
-    CMDLINE=""
+    OUTPUT_FILE="build/out/$MODEL/boot.img"
+    RAMDISK_00="build/out/$MODEL/boot_ramdisk"
+    OS_VERSION="16.0.0"
+    OS_PATCH_LEVEL="2026-05"
 
-	python3 toolchain/mkbootimg/mkbootimg.py --header_version $HEADER_VERSION --cmdline "$CMDLINE" --ramdisk $RAMDISK_00 \
-	--os_version $OS_VERSION --os_patch_level $OS_PATCH_LEVEL --kernel $KERNEL --output $OUTPUT_FILE || abort
-	fi  
+	  python3 "toolchain/mkbootimg/mkbootimg.py" \
+        --header_version 4 \
+        --ramdisk "$RAMDISK_00"	\
+        --os_version "$OS_VERSION" \
+        --os_patch_level "$OS_PATCH_LEVEL" \
+        --kernel "$KERNEL" \
+        --output "$OUTPUT_FILE" || return 1
 }
 
-build_dtb() {
+BUILD_DTB() {
     echo "-----------------------------------------------"
     echo "Building DTB image..."
-    ./toolchain/mkdtimg cfg_create build/out/$MODEL/dtb.img build/dtconfigs/s5e9925.cfg -d out/arch/arm64/boot/dts/exynos || abort 
+    python3 "toolchain/mkdtboimg.py" cfg_create "build/out/$MODEL/dtb.img" "build/dtconfigs/s5e9925.cfg" -d "out/arch/arm64/boot/dts/exynos" || return 1
 
     echo "-----------------------------------------------"
     echo "Building DTBO image..."
-    ./toolchain/mkdtimg cfg_create build/out/$MODEL/dtbo.img build/dtconfigs/$MODEL.cfg -d out/arch/arm64/boot/dts/samsung/$MODEL || abort
+    python3 "toolchain/mkdtboimg.py" cfg_create "build/out/$MODEL/dtbo.img" "build/dtconfigs/$MODEL.cfg" -d "out/arch/arm64/boot/dts/samsung/$MODEL" || return 1
     
 }
 
-build_modules() {
-    MODULES_FOLDER=modules
-    rm -rf out/$MODULES_FOLDER
+BUILD_MODULES() {
+    MODULES_DIR="modules"
+    
+    if [[ -d "out/$MODULES_DIR" ]]; then
+        rm -rf "out/$MODULES_DIR"
+    fi
+
+    if [[ -d "build/out/$MODEL/modules" ]]; then
+        rm -rf "build/out/$MODEL/modules"
+    fi
 
     echo "-----------------------------------------------"
     echo "Building modules..."
     # Strip modules and place them in modules folder
-    make ${MAKE_ARGS} INSTALL_MOD_PATH=$MODULES_FOLDER INSTALL_MOD_STRIP=1 modules_install || abort
-    
+    $MAKE_CMD INSTALL_MOD_PATH="$MODULES_DIR" INSTALL_MOD_STRIP=1 modules_install || return 1
+
     # Now we run depmod to update the dep/softdep files
     # For this we need the kernel version
-    KERNEL_DIR_PATH=$(find "out/$MODULES_FOLDER/lib/modules" -maxdepth 1 -type d -name "5.10*") || abort
-    KERNEL_VERSION=$(basename $KERNEL_DIR_PATH) || abort
+    KERNEL_DIR_PATH=$(find "out/$MODULES_DIR/lib/modules" -maxdepth 1 -type d -name "5.10*")
+    KERNEL_VERSION=$(basename "$KERNEL_DIR_PATH")
+
+    if [[ -z "$KERNEL_DIR_PATH" ]] || [[ -z "$KERNEL_VERSION" ]]; then
+        return 1
+    fi
 
     # And finally depmod itself
-    depmod -a -b out/$MODULES_FOLDER $KERNEL_VERSION || abort
+    depmod -a -b "out/$MODULES_DIR" "$KERNEL_VERSION" || return 1
 
     # depmod updates modules.alias, modules.dep and modules.softdep
     # But the module order is not updated by depmod
@@ -214,11 +225,11 @@ build_modules() {
     # Clang generates modules.order definitions like this
     # kernel/drivers/fingerprint/fingerprint.ko
     # So we sed the file to adapt
-    sed -i 's/.*\///g' $KERNEL_DIR_PATH/modules.order 
+    sed -i 's/.*\///g' "$KERNEL_DIR_PATH/modules.order" || return 1
 
     # Now we sed the bad filenames out of the file with a loop
-    for FILENAME in $FILENAMES; do
-        sed -i "/$FILENAME/d" "$KERNEL_DIR_PATH/modules.order"
+    for i in $FILENAMES; do
+        sed -i "/$i/d" "$KERNEL_DIR_PATH/modules.order" || return 1
     done
 
     # Now we have to order the modules
@@ -226,7 +237,7 @@ build_modules() {
     # exynos-chipid_v2.ko exynos-reboot.ko sec_debug_base_early.ko clk_exynos.ko exynos_mct_v2.ko s3c2410_wdt.ko sec_debug_mode.ko
     # These files have to be at the top of modules.order in this order, and then we can keep the default order.
     # Samsung wants the file to be renamed to modules.load anyways, so we will craft our own modules.load file based on modules.order
-    touch $KERNEL_DIR_PATH/modules.load
+    touch "$KERNEL_DIR_PATH/modules.load" || return 1
 
     INITIAL_ORDER="
     exynos-chipid_v2.ko
@@ -240,14 +251,14 @@ build_modules() {
 
     # First we add the order from Samsung into our new modules.load
     # And we sed it out of modules.order
-    for LINE in $INITIAL_ORDER; do
-        echo $LINE >> $KERNEL_DIR_PATH/modules.load
-        sed -i "/$LINE/d" "$KERNEL_DIR_PATH/modules.order"
+    for i in $INITIAL_ORDER; do
+        echo "$i" >> "$KERNEL_DIR_PATH/modules.load" || return 1
+        sed -i "/$i/d" "$KERNEL_DIR_PATH/modules.order" || return 1
     done
 
     # Now we add the remaining lines from modules.order into modules.load
-    while IFS= read -r line; do
-        echo "$line" >> "$KERNEL_DIR_PATH/modules.load"
+    while IFS= read -r i; do
+        echo "$i" >> "$KERNEL_DIR_PATH/modules.load" || return 1
     done < "$KERNEL_DIR_PATH/modules.order"
 
     # Now we have to also modify modules.dep
@@ -256,100 +267,111 @@ build_modules() {
     # But Samsung wants them like this
     # /lib/modules/samsung-dma.ko: /lib/modules/pl330.ko
     # So we will format it with sed
-    sed -i 's/\(kernel\/[^: ]*\/\)\([^: ]*\.ko\)/\/lib\/modules\/\2/g' "$KERNEL_DIR_PATH/modules.dep"
+    sed -i 's/\(kernel\/[^: ]*\/\)\([^: ]*\.ko\)/\/lib\/modules\/\2/g' "$KERNEL_DIR_PATH/modules.dep" || return 1
 
     # Now the modules and their configuration descriptor files are ready, we move them to a folder and create the new second ramdisk
     # The second ramdisk should contain a /lib/modules where the modules are located
-    mkdir -p build/out/$MODEL/modules/lib/modules
+    mkdir -p "build/out/$MODEL/modules/lib/modules"
 
-    find $KERNEL_DIR_PATH -name '*.ko' -exec cp '{}' build/out/$MODEL/modules/lib/modules ';'
+    find "$KERNEL_DIR_PATH" -name '*.ko' -exec cp '{}' "build/out/$MODEL/modules/lib/modules" ';'
 
-    if [ "$MODEL" == r0s ]; then 
-        sed -i /wlan\.ko/d "$KERNEL_DIR_PATH/modules.load"
-        echo "wlan.ko" >> "$KERNEL_DIR_PATH/modules.load"
+    if [[ "$MODEL" == r0s ]] || [[ "$MODEL" == r11s ]]; then 
+        sed -i '/wlan\.ko/d' "$KERNEL_DIR_PATH/modules.load" || return 1
+        echo "wlan.ko" >> "$KERNEL_DIR_PATH/modules.load" || return 1
     fi
 
     # We also copy the module configuration descriptors
-    cp $KERNEL_DIR_PATH/modules.{alias,dep,softdep,load} build/out/$MODEL/modules/lib/modules
-
+    for i in "alias" "dep" "load" "softdep"; do
+        cp -a "$KERNEL_DIR_PATH/modules.$i" "build/out/$MODEL/modules/lib/modules" || return 1
+    done
 }
 
-build_vendor_boot() {
+BUILD_VENDOR_BOOT() {
     echo "-----------------------------------------------"
     echo "Building vendor_boot RAMDisks..."
     # Copy common vendor_ramdisk00 files to build/out
-    cp -a build/ramdisk/vendor_boot/ramdisk00 build/out/$MODEL/vendor_ramdisk00
-    
+    cp -a "build/ramdisk/vendor_boot/ramdisk00" "build/out/$MODEL/vendor_ramdisk00"
+ 
     # Copy device firmware files for vendor_ramdisk00
-    cp -a build/ramdisk/vendor_boot/vendor_firmware/$MODEL/* build/out/$MODEL/vendor_ramdisk00
+    cp -a "build/ramdisk/vendor_boot/vendor_firmware/$MODEL/"* "build/out/$MODEL/vendor_ramdisk00"
 
     # Pack RAMDisks
     # vendor_ramdisk == ramdisk00
     # modules_ramdisk == ramdisk01
-    pushd build/out/$MODEL/vendor_ramdisk00 > /dev/null
-    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > ../$MODEl/vendor_ramdisk || abort
-    popd > /dev/null
+    (
+    cd "build/out/$MODEL/vendor_ramdisk00" || return 1
+    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > "../vendor_ramdisk" || return 1
+    ) || return 1
 
-    pushd build/out/$MODEL/modules > /dev/null
-    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > ../modules_ramdisk || abort
-    popd > /dev/null
+    (
+    cd "build/out/$MODEL/modules" || return 1
+    find . ! -name . | LC_ALL=C sort | cpio -o -H newc -R root:root | lz4 -l > "../modules_ramdisk" || return 1
+    )
 
     echo "-----------------------------------------------"
     echo "Building vendor_boot image..."
 
-    OUTPUT_FILE=build/out/$MODEL/vendor_boot.img
-    DTB_PATH=build/out/$MODEL/dtb.img
-    BOOTCONFIG_PATH=build/ramdisk/bootconfig
-    RAMDISK_00=build/out/$MODEL/vendor_ramdisk
-    RAMDISK_01=build/out/$MODEL/modules_ramdisk
-    HEADER_VERSION=4
-    BASE=0x00000000
-    PAGESIZE=0x00001000
-    KERNEL_OFFSET=0x10008000
-    RAMDISK_OFFSET=0x14000000
-    TAGS_OFFSET=0x10000000
-    DTB_OFFSET=0x0000000011F00000
+    OUTPUT_FILE="build/out/$MODEL/vendor_boot.img"
+    DTB_PATH="build/out/$MODEL/dtb.img"
+    BOOTCONFIG_PATH="build/ramdisk/bootconfig"
+    RAMDISK_00="build/out/$MODEL/vendor_ramdisk"
+    RAMDISK_01="build/out/$MODEL/modules_ramdisk"
     CMDLINE="bootconfig loop.max_part=7"
 
-    python3 toolchain/mkbootimg/mkbootimg.py --header_version $HEADER_VERSION --pagesize $PAGESIZE --base $BASE --kernel_offset $KERNEL_OFFSET \
-	--ramdisk_offset $RAMDISK_OFFSET --tags_offset $TAGS_OFFSET --dtb_offset $DTB_OFFSET --vendor_cmdline "$CMDLINE" --board $BOARD --dtb $DTB_PATH  \
-	--ramdisk_type 1 --ramdisk_name "" --vendor_ramdisk_fragment $RAMDISK_00 --vendor_bootconfig $BOOTCONFIG_PATH --ramdisk_type 3 \
-	--ramdisk_name dlkm --vendor_ramdisk_fragment $RAMDISK_01 --vendor_boot $OUTPUT_FILE || abort
+    python3 "toolchain/mkbootimg/mkbootimg.py" \
+        --header_version "4" \
+        --vendor_cmdline "$CMDLINE" \
+        --dtb "$DTB_PATH" \
+        --ramdisk_type 1 \
+        --ramdisk_name "" \
+        --vendor_ramdisk_fragment "$RAMDISK_00" \
+        --vendor_bootconfig "$BOOTCONFIG_PATH" \
+        --ramdisk_type "3" \
+        --ramdisk_name "dlkm" \
+        --vendor_ramdisk_fragment "$RAMDISK_01" \
+        --vendor_boot "$OUTPUT_FILE" || return 1
 }
 
-build_zip() {
+BUILD_ZIP() {
     echo "-----------------------------------------------"
     echo "Building zip..."
-    cp build/out/$MODEL/boot.img build/out/$MODEL/zip/files/boot.img
-    cp build/out/$MODEL/vendor_boot.img build/out/$MODEL/zip/files/vendor_boot.img
-    cp build/out/$MODEL/dtbo.img build/out/$MODEL/zip/files/dtbo.img
-    cp build/update-binary build/out/$MODEL/zip/META-INF/com/google/android/update-binary
-    cp build/updater-script build/out/$MODEL/zip/META-INF/com/google/android/updater-script
+    for i in "boot" "dtbo" "vendor_boot"; do
+        cp "build/out/$MODEL/$i.img" "build/out/$MODEL/zip/files/$i.img" || return 1
+    done
 
-    version=$(grep -o 'CONFIG_LOCALVERSION="[^"]*"' arch/arm64/configs/s5e9925_defconfig | cut -d '"' -f 2)
-    version=${version:1}
-    pushd build/out/$MODEL/zip > /dev/null
-    DATE=`date +"%d-%m-%Y_%H-%M-%S"`
+    cp "build/update-binary" "build/out/$MODEL/zip/META-INF/com/google/android/update-binary" || return 1
+    cp "build/updater-script" "build/out/$MODEL/zip/META-INF/com/google/android/updater-script" || return 1
 
-    if [[ "$KSU_OPTION" == "y" ]]; then
-        NAME="$version"_"$MODEL"_UNOFFICIAL_KSU_"$DATE".zip
+    VERSION=$(grep -o 'CONFIG_LOCALVERSION="[^"]*"' arch/arm64/configs/s5e9925_defconfig | cut -d '"' -f 2)
+    VERSION=${VERSION:1}
+    DATE="$(date +"%d-%m-%Y_%H-%M-%S")"
+
+    if [[ "$KSU" == "true" ]]; then
+        NAME="${VERSION}_${MODEL}_UNOFFICIAL_KSU_$DATE.zip"
     else
-        NAME="$version"_"$MODEL"_UNOFFICIAL_"$DATE".zip
+        NAME="${VERSION}_${MODEL}_UNOFFICIAL_$DATE.zip"
     fi
-    zip -r -qq ../"$NAME" .
-    popd > /dev/null
+
+    if [[ -f "build/out/$MODEL/$NAME" ]]; then
+        rm -f "build/out/$MODEL/$NAME"
+    fi
+
+    (
+    cd "build/out/$MODEL/zip" || return 1
+    zip -r -qq "../$NAME" .
+    ) || return 1
 }
 
-build_kernel
-build_boot
-build_dtb
-build_modules
+BUILD_KERNEL || ABORT
+BUILD_BOOT || ABORT
+BUILD_DTB || ABORT
+BUILD_MODULES || ABORT
 
-if [ -z "$RECOVERY" ]; then				   
-    build_vendor_boot
-    build_zip
+if ! $RECOVERY; then				   
+    BUILD_VENDOR_BOOT || ABORT
+    BUILD_ZIP || ABORT
 fi 
 
-popd > /dev/null
+popd > /dev/null || exit 1
 echo "-----------------------------------------------"
 echo "Build finished successfully!"
