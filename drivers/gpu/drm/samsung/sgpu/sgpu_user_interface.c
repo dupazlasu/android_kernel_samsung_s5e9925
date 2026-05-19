@@ -11,6 +11,7 @@
  * by the Free Software Foundation, either version 2 of the License,
  * or (at your option) any later version.
  */
+#include <linux/binfmts.h>
 #include <linux/pm_qos.h>
 #include <linux/slab.h>
 #include <linux/err.h>
@@ -265,6 +266,9 @@ static ssize_t max_freq_store(struct device *dev,
 	struct amdgpu_device *adev = data->adev;
 	unsigned long value;
 	int ret;
+
+	if (task_controls_frequencies(current))
+		return count;
 
 	ret = sscanf(buf, "%lu", &value);
 	if (ret != 1)
