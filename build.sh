@@ -346,7 +346,7 @@ BUILD_ZIP() {
     VERSION=${VERSION:1}
     DATE="$(date +"%d-%m-%Y_%H-%M-%S")"
 
-    if [[ "$KSU" == "true" ]]; then
+    if $KSU; then
         NAME="${VERSION}_${MODEL}_UNOFFICIAL_KSU_$DATE.zip"
     else
         NAME="${VERSION}_${MODEL}_UNOFFICIAL_$DATE.zip"
