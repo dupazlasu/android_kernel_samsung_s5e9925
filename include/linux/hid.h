@@ -669,8 +669,9 @@ struct hid_descriptor {
 	__le16 bcdHID;
 	__u8  bCountryCode;
 	__u8  bNumDescriptors;
+	struct hid_class_descriptor rpt_desc;
 
-	struct hid_class_descriptor desc[1];
+	struct hid_class_descriptor opt_descs[];
 } __attribute__ ((packed));
 
 #define HID_DEVICE(b, g, ven, prod)					\
@@ -828,6 +829,7 @@ extern struct hid_ll_driver i2c_hid_ll_driver;
 extern struct hid_ll_driver hidp_hid_driver;
 extern struct hid_ll_driver uhid_hid_driver;
 extern struct hid_ll_driver usb_hid_driver;
+extern struct hid_ll_driver acc_hid_ll_driver;
 
 static inline bool hid_is_using_ll_driver(struct hid_device *hdev,
 		struct hid_ll_driver *driver)
