@@ -2,7 +2,7 @@
 //
 // cs40l26.c -- ALSA SoC Audio driver for Cirrus Logic Haptic Device: CS40L26
 //
-// Copyright 2021 Cirrus Logic. Inc.
+// Copyright 2022 Cirrus Logic. Inc.
 
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
 #include <linux/vibrator/cs40l26.h>
@@ -64,13 +64,10 @@ static int cs40l26_swap_ext_clk(struct cs40l26_codec *codec, u8 clk_src)
 		return ret;
 	}
 
-	ret = regmap_update_bits(regmap, CS40L26_REFCLK_INPUT,
-			CS40L26_PLL_REFCLK_OPEN_LOOP_MASK, 1 <<
-			CS40L26_PLL_REFCLK_OPEN_LOOP_SHIFT);
-	if (ret) {
-		dev_err(dev, "Failed to set Open-Loop PLL\n");
+	ret = cs40l26_set_pll_loop(codec->core,
+			CS40L26_PLL_REFCLK_SET_OPEN_LOOP);
+	if (ret)
 		return ret;
-	}
 
 	ret = regmap_update_bits(regmap, CS40L26_REFCLK_INPUT,
 			CS40L26_PLL_REFCLK_FREQ_MASK |
@@ -81,11 +78,8 @@ static int cs40l26_swap_ext_clk(struct cs40l26_codec *codec, u8 clk_src)
 		return ret;
 	}
 
-	ret = regmap_update_bits(regmap, CS40L26_REFCLK_INPUT,
-			CS40L26_PLL_REFCLK_OPEN_LOOP_MASK, 0 <<
-			CS40L26_PLL_REFCLK_OPEN_LOOP_SHIFT);
-	if (ret)
-		dev_err(dev, "Failed to close PLL loop\n");
+	ret = cs40l26_set_pll_loop(codec->core,
+			CS40L26_PLL_REFCLK_SET_CLOSED_LOOP);
 
 	return ret;
 }
@@ -116,6 +110,13 @@ static int cs40l26_clk_en(struct snd_soc_dapm_widget *w,
 		mutex_unlock(&cs40l26->lock);
 		if (ret)
 			return ret;
+
+		if (!completion_done(&cs40l26->i2s_cont)) {
+			if (!wait_for_completion_timeout(&cs40l26->i2s_cont,
+				msecs_to_jiffies(CS40L26_ASP_START_TIMEOUT)))
+				dev_warn(codec->dev,
+					"SVC calibration not complete\n");
+		}
 
 		ret = cs40l26_swap_ext_clk(codec, CS40L26_PLL_REFCLK_BCLK);
 		if (ret)
@@ -180,8 +181,15 @@ static int cs40l26_a2h_ev(struct snd_soc_dapm_widget *w,
 
 			ret = cl_dsp_coeff_file_parse(cs40l26->dsp, fw);
 			release_firmware(fw);
-			if (ret)
+			if (ret) {
+				dev_warn(dev,
+					"Failed to load %s, %d. Continuing...",
+					codec->bin_file, ret);
 				return ret;
+			}
+
+			dev_info(dev, "%s Loaded Successfully\n",
+							codec->bin_file);
 
 			codec->tuning_prev = codec->tuning;
 
@@ -210,7 +218,7 @@ static int cs40l26_pcm_ev(struct snd_soc_dapm_widget *w,
 	struct device *dev = cs40l26->dev;
 	u32 asp_en_mask = CS40L26_ASP_TX1_EN_MASK | CS40L26_ASP_TX2_EN_MASK |
 			CS40L26_ASP_RX1_EN_MASK | CS40L26_ASP_RX2_EN_MASK;
-	u32 asp_enables, reg;
+	u32 asp_enables;
 	u8 data_src;
 	int ret;
 
@@ -251,28 +259,6 @@ static int cs40l26_pcm_ev(struct snd_soc_dapm_widget *w,
 				asp_en_mask, asp_enables);
 		if (ret) {
 			dev_err(dev, "Failed to enable ASP channels\n");
-			goto err_mutex;
-		}
-
-		ret = cl_dsp_get_reg(cs40l26->dsp, "FLAGS",
-			CL_DSP_XM_UNPACKED_TYPE, CS40L26_EXT_ALGO_ID, &reg);
-		if (ret)
-			goto err_mutex;
-
-		ret = regmap_write(regmap, reg, codec->svc_for_streaming_data);
-		if (ret) {
-			dev_err(dev, "Failed to specify SVC for streaming\n");
-			goto err_mutex;
-		}
-
-		ret = cl_dsp_get_reg(cs40l26->dsp, "SOURCE_INVERT",
-			CL_DSP_XM_UNPACKED_TYPE, CS40L26_EXT_ALGO_ID, &reg);
-		if (ret)
-			goto err_mutex;
-
-		ret = regmap_write(regmap, reg, codec->invert_streaming_data);
-		if (ret) {
-			dev_err(dev, "Failed to specify SVC for streaming\n");
 			goto err_mutex;
 		}
 
@@ -319,7 +305,9 @@ static int cs40l26_i2s_vmon_get(struct snd_kcontrol *kcontrol,
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
 	dev_info(cs40l26->dev, "%s\n", __func__);
 #endif
-	pm_runtime_get_sync(cs40l26->dev);
+	ret = cs40l26_pm_enter(cs40l26->dev);
+	if (ret)
+		return ret;
 
 	ret = regmap_read(cs40l26->regmap, CS40L26_SPKMON_VMON_DEC_OUT_DATA,
 			&val);
@@ -338,8 +326,7 @@ static int cs40l26_i2s_vmon_get(struct snd_kcontrol *kcontrol,
 			CS40L26_VMON_DEC_OUT_DATA_MASK;
 
 pm_err:
-	pm_runtime_mark_last_busy(cs40l26->dev);
-	pm_runtime_put_autosuspend(cs40l26->dev);
+	cs40l26_pm_exit(cs40l26->dev);
 
 	return ret;
 }
@@ -394,42 +381,78 @@ static int cs40l26_svc_for_streaming_data_get(struct snd_kcontrol *kcontrol,
 	struct cs40l26_codec *codec =
 	snd_soc_component_get_drvdata(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_private *cs40l26 = codec->core;
+	struct regmap *regmap = cs40l26->regmap;
+	struct device *dev = cs40l26->dev;
+	unsigned int val = 0, reg;
+	int ret = 0;
 
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
-	dev_info(cs40l26->dev, "%s\n", __func__);
+	dev_info(dev, "%s\n", __func__);
 #endif
-	mutex_lock(&cs40l26->lock);
+	ret = cl_dsp_get_reg(cs40l26->dsp, "FLAGS",
+		CL_DSP_XM_UNPACKED_TYPE, CS40L26_EXT_ALGO_ID, &reg);
+	if (ret)
+		return ret;
 
-	if (codec->svc_for_streaming_data)
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
+
+	ret = regmap_read(regmap, reg, &val);
+	if (ret) {
+		dev_err(cs40l26->dev, "Failed to read FLAGS\n");
+		goto pm_err;
+	}
+
+	if (val & CS40L26_SVC_FOR_STREAMING_MASK)
 		ucontrol->value.enumerated.item[0] = 1;
 	else
 		ucontrol->value.enumerated.item[0] = 0;
 
-	mutex_unlock(&cs40l26->lock);
+pm_err:
+	cs40l26_pm_exit(dev);
 
-	return 0;
+	return ret;
 }
 
 static int cs40l26_svc_for_streaming_data_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
+	struct snd_soc_dapm_context *dapm =
+	snd_soc_component_get_dapm(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_codec *codec =
 	snd_soc_component_get_drvdata(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_private *cs40l26 = codec->core;
+	struct regmap *regmap = cs40l26->regmap;
+	struct device *dev = cs40l26->dev;
+	int ret = 0;
+	unsigned int reg;
 
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
-	dev_info(cs40l26->dev, "%s\n", __func__);
+	dev_info(dev, "%s\n", __func__);
 #endif
-	mutex_lock(&cs40l26->lock);
+	ret = cl_dsp_get_reg(cs40l26->dsp, "FLAGS",
+		CL_DSP_XM_UNPACKED_TYPE, CS40L26_EXT_ALGO_ID, &reg);
+	if (ret)
+		return ret;
 
-	if (ucontrol->value.enumerated.item[0])
-		codec->svc_for_streaming_data = true;
-	else
-		codec->svc_for_streaming_data = false;
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
 
-	mutex_unlock(&cs40l26->lock);
+	snd_soc_dapm_mutex_lock(dapm);
 
-	return 0;
+	ret = regmap_update_bits(regmap, reg,
+			CS40L26_SVC_FOR_STREAMING_MASK,
+			ucontrol->value.enumerated.item[0]);
+	if (ret)
+		dev_err(cs40l26->dev, "Failed to specify SVC for streaming\n");
+
+	snd_soc_dapm_mutex_unlock(dapm);
+
+	cs40l26_pm_exit(dev);
+
+	return ret;
 }
 
 static int cs40l26_invert_streaming_data_get(struct snd_kcontrol *kcontrol,
@@ -438,42 +461,75 @@ static int cs40l26_invert_streaming_data_get(struct snd_kcontrol *kcontrol,
 	struct cs40l26_codec *codec =
 	snd_soc_component_get_drvdata(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_private *cs40l26 = codec->core;
+	struct regmap *regmap = cs40l26->regmap;
+	struct device *dev = cs40l26->dev;
+	unsigned int val = 0, reg;
+	int ret = 0;
 
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
-	dev_info(cs40l26->dev, "%s\n", __func__);
+	dev_info(dev, "%s\n", __func__);
 #endif
-	mutex_lock(&cs40l26->lock);
+	ret = cl_dsp_get_reg(cs40l26->dsp, "SOURCE_INVERT",
+		CL_DSP_XM_UNPACKED_TYPE, CS40L26_EXT_ALGO_ID, &reg);
+	if (ret)
+		return ret;
 
-	if (codec->invert_streaming_data)
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
+
+	ret = regmap_read(regmap, reg, &val);
+	if (ret) {
+		dev_err(cs40l26->dev, "Failed to read SOURCE_INVERT\n");
+		goto pm_err;
+	}
+
+	if (val)
 		ucontrol->value.enumerated.item[0] = 1;
 	else
 		ucontrol->value.enumerated.item[0] = 0;
 
-	mutex_unlock(&cs40l26->lock);
-
-	return 0;
+pm_err:
+	cs40l26_pm_exit(dev);
+	return ret;
 }
 
 static int cs40l26_invert_streaming_data_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
+	struct snd_soc_dapm_context *dapm =
+	snd_soc_component_get_dapm(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_codec *codec =
 	snd_soc_component_get_drvdata(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_private *cs40l26 = codec->core;
+	struct regmap *regmap = cs40l26->regmap;
+	struct device *dev = cs40l26->dev;
+	int ret = 0;
+	unsigned int reg;
 
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
-	dev_info(cs40l26->dev, "%s\n", __func__);
+	dev_info(dev, "%s\n", __func__);
 #endif
-	mutex_lock(&cs40l26->lock);
+	ret = cl_dsp_get_reg(cs40l26->dsp, "SOURCE_INVERT",
+		CL_DSP_XM_UNPACKED_TYPE, CS40L26_EXT_ALGO_ID, &reg);
+	if (ret)
+		return ret;
 
-	if (ucontrol->value.enumerated.item[0])
-		codec->invert_streaming_data = true;
-	else
-		codec->invert_streaming_data = false;
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
 
-	mutex_unlock(&cs40l26->lock);
+	snd_soc_dapm_mutex_lock(dapm);
 
-	return 0;
+	ret = regmap_write(regmap, reg, ucontrol->value.enumerated.item[0]);
+	if (ret)
+		dev_err(cs40l26->dev, "Failed to specify invert streaming data\n");
+
+	snd_soc_dapm_mutex_unlock(dapm);
+
+	cs40l26_pm_exit(dev);
+
+	return ret;
 }
 
 static int cs40l26_tuning_get(struct snd_kcontrol *kcontrol,
@@ -540,23 +596,28 @@ static int cs40l26_a2h_volume_get(struct snd_kcontrol *kcontrol,
 	if (ret)
 		return ret;
 
-	pm_runtime_get_sync(dev);
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
 
 	ret = regmap_read(regmap, reg, &val);
-	if (ret)
+	if (ret) {
 		dev_err(dev, "Failed to get VOLUMELEVEL\n");
-
-	pm_runtime_mark_last_busy(dev);
-	pm_runtime_put_autosuspend(dev);
+		goto pm_err;
+	}
 
 	ucontrol->value.integer.value[0] = val;
 
+pm_err:
+	cs40l26_pm_exit(dev);
 	return ret;
 }
 
 static int cs40l26_a2h_volume_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
+	struct snd_soc_dapm_context *dapm =
+	snd_soc_component_get_dapm(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_codec *codec =
 	snd_soc_component_get_drvdata(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_private *cs40l26 = codec->core;
@@ -573,6 +634,12 @@ static int cs40l26_a2h_volume_put(struct snd_kcontrol *kcontrol,
 	if (ret)
 		return ret;
 
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
+
+	snd_soc_dapm_mutex_lock(dapm);
+
 	if (ucontrol->value.integer.value[0] > CS40L26_A2H_VOLUME_MAX)
 		val = CS40L26_A2H_VOLUME_MAX;
 	else if (ucontrol->value.integer.value[0] < 0)
@@ -580,14 +647,13 @@ static int cs40l26_a2h_volume_put(struct snd_kcontrol *kcontrol,
 	else
 		val = ucontrol->value.integer.value[0];
 
-	pm_runtime_get_sync(dev);
-
 	ret = regmap_write(regmap, reg, val);
 	if (ret)
 		dev_err(dev, "Failed to set VOLUMELEVEL\n");
 
-	pm_runtime_mark_last_busy(dev);
-	pm_runtime_put_autosuspend(dev);
+	snd_soc_dapm_mutex_unlock(dapm);
+
+	cs40l26_pm_exit(dev);
 
 	return ret;
 }
@@ -611,7 +677,9 @@ static int cs40l26_a2h_delay_get(struct snd_kcontrol *kcontrol,
 	if (ret)
 		return ret;
 
-	pm_runtime_get_sync(dev);
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
 
 	ret = regmap_read(regmap, reg, &val);
 	if (ret) {
@@ -622,8 +690,7 @@ static int cs40l26_a2h_delay_get(struct snd_kcontrol *kcontrol,
 	ucontrol->value.integer.value[0] = val;
 
 err:
-	pm_runtime_mark_last_busy(dev);
-	pm_runtime_put_autosuspend(dev);
+	cs40l26_pm_exit(dev);
 
 	return ret;
 }
@@ -631,6 +698,8 @@ err:
 static int cs40l26_a2h_delay_put(struct snd_kcontrol *kcontrol,
 		struct snd_ctl_elem_value *ucontrol)
 {
+	struct snd_soc_dapm_context *dapm =
+	snd_soc_component_get_dapm(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_codec *codec =
 	snd_soc_component_get_drvdata(snd_soc_kcontrol_component(kcontrol));
 	struct cs40l26_private *cs40l26 = codec->core;
@@ -647,6 +716,12 @@ static int cs40l26_a2h_delay_put(struct snd_kcontrol *kcontrol,
 	if (ret)
 		return ret;
 
+	ret = cs40l26_pm_enter(dev);
+	if (ret)
+		return ret;
+
+	snd_soc_dapm_mutex_lock(dapm);
+
 	if (ucontrol->value.integer.value[0] > CS40L26_A2H_DELAY_MAX)
 		val = CS40L26_A2H_DELAY_MAX;
 	else if (ucontrol->value.integer.value[0] < 0)
@@ -654,14 +729,13 @@ static int cs40l26_a2h_delay_put(struct snd_kcontrol *kcontrol,
 	else
 		val = ucontrol->value.integer.value[0];
 
-	pm_runtime_get_sync(dev);
-
 	ret = regmap_write(regmap, reg, val);
 	if (ret)
 		dev_err(dev, "Failed to set LRADELAYSAMPS\n");
 
-	pm_runtime_mark_last_busy(dev);
-	pm_runtime_put_autosuspend(dev);
+	snd_soc_dapm_mutex_unlock(dapm);
+
+	cs40l26_pm_exit(dev);
 
 	return ret;
 }
@@ -812,7 +886,9 @@ static int cs40l26_pcm_hw_params(struct snd_pcm_substream *substream,
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
 	dev_info(codec->dev, "%s\n", __func__);
 #endif
-	pm_runtime_get_sync(codec->dev);
+	ret = cs40l26_pm_enter(codec->dev);
+	if (ret)
+		return ret;
 
 	lrck = params_rate(params);
 	switch (lrck) {
@@ -880,8 +956,7 @@ static int cs40l26_pcm_hw_params(struct snd_pcm_substream *substream,
 #endif
 
 err_pm:
-	pm_runtime_mark_last_busy(codec->dev);
-	pm_runtime_put_autosuspend(codec->dev);
+	cs40l26_pm_exit(codec->dev);
 
 	return ret;
 }
@@ -895,10 +970,6 @@ static int cs40l26_set_tdm_slot(struct snd_soc_dai *dai, unsigned int tx_mask,
 #ifdef CONFIG_CS40L26_SAMSUNG_FEATURE
 	dev_info(codec->dev, "%s\n", __func__);
 #endif
-	if (dai->id != 0) {
-		dev_err(codec->dev, "Invalid DAI ID: %d\n", dai->id);
-		return -EINVAL;
-	}
 
 	codec->tdm_width = slot_width;
 	codec->tdm_slots = slots;

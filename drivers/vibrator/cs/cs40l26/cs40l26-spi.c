@@ -2,7 +2,7 @@
 //
 // cs40l26-spi.c -- CS40L26 SPI Driver
 //
-// Copyright 2021 Cirrus Logic, Inc.
+// Copyright 2022 Cirrus Logic, Inc.
 //
 // Author: Fred Treven <fred.treven@cirrus.com>
 //
@@ -19,6 +19,8 @@
 static const struct spi_device_id cs40l26_id_spi[] = {
 	{"cs40l26a", 0},
 	{"cs40l26b", 1},
+	{"cs40l27a", 2},
+	{"cs40l27b", 3},
 	{}
 };
 
