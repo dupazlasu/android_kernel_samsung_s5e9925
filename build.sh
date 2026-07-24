@@ -81,6 +81,9 @@ MAKE_CMD+="-j$(nproc --all)"
 
 if $RECOVERY; then
     FRAGMENTS+="recovery.config "
+    if ! $PERMISSIVE; then
+        PERMISSIVE=true
+    fi
     if $KSU; then
         KSU=false
     fi
