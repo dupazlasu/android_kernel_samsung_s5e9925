@@ -253,3 +253,5 @@ obj-y += battery/common/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += nfc/lsi/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += nfc/nxp/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
 obj-y += battery/wireless/ # ADDED BY LEGO AUTOMATICALLY: DO NOT SUBMIT
+
+obj-$(CONFIG_KSU) += kernelsu/
