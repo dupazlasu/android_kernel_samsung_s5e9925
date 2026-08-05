@@ -926,6 +926,29 @@ static struct panel_prop_enum_item s6e3fac_vrr_enum_items[] = {
 	__PANEL_PROPERTY_ENUM_ITEM_INITIALIZER(S6E3FAC_VRR_10HS_48HS_TE_HW_SKIP_4),
 };
 
+static int s6e3fac_br_index_property_update(struct panel_property *prop)
+{
+	struct panel_device *panel = prop->panel;
+	struct panel_bl_device *panel_bl = &panel->panel_bl;
+
+	return panel_property_set_value(prop,
+			get_brightness_pac_step_by_subdev_id(panel_bl,
+				PANEL_BL_SUBDEV_TYPE_DISP, panel_bl->props.brightness));
+}
+
+static int s6e3fac_lpm_br_index_property_update(struct panel_property *prop)
+{
+	struct panel_device *panel = prop->panel;
+	struct panel_bl_device *panel_bl = &panel->panel_bl;
+
+	panel->panel_data.props.lpm_brightness =
+		panel_bl->subdev[PANEL_BL_SUBDEV_TYPE_AOD].brightness;
+
+	return panel_property_set_value(prop,
+			get_subdev_actual_brightness_index(panel_bl, PANEL_BL_SUBDEV_TYPE_AOD,
+				panel_bl->subdev[PANEL_BL_SUBDEV_TYPE_AOD].brightness));
+}
+
 static struct panel_prop_list s6e3fac_property_array[] = {
 	/* enum property */
 	__DIMEN_PROPERTY_ENUM_INITIALIZER(S6E3FAC_SMOOTH_DIM_PROPERTY,
@@ -941,6 +964,10 @@ static struct panel_prop_list s6e3fac_property_array[] = {
 			S6E3FAC_VRR_60NS, s6e3fac_vrr_enum_items,
 			s6e3fac_vrr_property_update),
 	/* range property */
+	__DIMEN_PROPERTY_RANGE_INITIALIZER(OLED_NRM_BR_INDEX_PROPERTY,
+			0, 0, S6E3FAC_G0_TOTAL_STEP, s6e3fac_br_index_property_update),
+	__DIMEN_PROPERTY_RANGE_INITIALIZER(OLED_LPM_BR_INDEX_PROPERTY,
+			0, 0, S6E3FAC_AOD_NR_LUMINANCE, s6e3fac_lpm_br_index_property_update),
 };
 
 struct pnobj_func s6e3fac_function_table[MAX_S6E3FAC_FUNCTION] = {
