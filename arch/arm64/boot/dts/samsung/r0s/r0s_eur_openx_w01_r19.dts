@@ -1823,7 +1823,7 @@
 				panels {
 
 					s6e3fac_rainbow_r0 {
-						ddi = <0x31>;
+						ap-vendor-setting = <0x31>;
 						display-mode = <0x32>;
 						power-ctrl = <0x33>;
 						freq-hop = <0x34>;
@@ -13342,7 +13342,7 @@
 					panels {
 
 						s6e3fac_rainbow_r0 {
-							ddi = <0x00>;
+							ap-vendor-setting = <0x00>;
 							display-mode = <0x00>;
 							power-ctrl = <0x00>;
 							freq-hop = <0x00>;
