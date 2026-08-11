@@ -3101,108 +3101,67 @@ static void __exynos_dqe_state(struct exynos_dqe *dqe,
 	dqe_debug(dqe, "-\n");
 }
 
-static const struct exynos_dqe_funcs dqe_funcs = {
-	.dump = __exynos_dqe_dump,
-	.prepare = __exynos_dqe_prepare,
-	.update = __exynos_dqe_update,
-	.enable = __exynos_dqe_enable,
-	.disable = __exynos_dqe_disable,
-	.suspend = __exynos_dqe_suspend,
-	.resume = __exynos_dqe_resume,
-	.state = __exynos_dqe_state,
-};
-
 void exynos_dqe_dump(struct exynos_dqe *dqe)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!dqe || dqe->initialized == false)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->dump(dqe);
+	__exynos_dqe_dump(dqe);
 }
 
 void exynos_dqe_prepare(struct exynos_dqe *dqe,
 			struct drm_crtc_state *crtc_state)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!dqe || dqe->initialized == false || !crtc_state)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->prepare(dqe, crtc_state);
+	__exynos_dqe_prepare(dqe, crtc_state);
 }
 
 void exynos_dqe_update(struct exynos_dqe *dqe,
 			struct drm_crtc_state *crtc_state)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!dqe || dqe->initialized == false || !crtc_state)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->update(dqe, crtc_state);
+	__exynos_dqe_update(dqe, crtc_state);
 }
 
 void exynos_dqe_enable(struct exynos_dqe *dqe)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!dqe || dqe->initialized == false)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->enable(dqe);
+	__exynos_dqe_enable(dqe);
 }
 
 void exynos_dqe_disable(struct exynos_dqe *dqe)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!dqe || dqe->initialized == false)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->disable(dqe);
+	__exynos_dqe_disable(dqe);
 }
 
 void exynos_dqe_suspend(struct exynos_dqe *dqe)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!dqe || dqe->initialized == false)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->suspend(dqe);
+	__exynos_dqe_suspend(dqe);
 }
 
 void exynos_dqe_resume(struct exynos_dqe *dqe)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!dqe || dqe->initialized == false)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->resume(dqe);
+	__exynos_dqe_resume(dqe);
 }
 
 void exynos_dqe_state(struct exynos_dqe *dqe,
 			enum dqe_reg_type type,	bool *enabled)
 {
-	const struct exynos_dqe_funcs *funcs;
-
 	if (!enabled)
 		return;
 
@@ -3211,9 +3170,7 @@ void exynos_dqe_state(struct exynos_dqe *dqe,
 	if (!dqe || dqe->initialized == false || type >= DQE_REG_MAX)
 		return;
 
-	funcs = dqe->funcs;
-	if (funcs)
-		funcs->state(dqe, type, enabled);
+	__exynos_dqe_state(dqe, type, enabled);
 }
 
 struct exynos_dqe *exynos_dqe_register(struct decon_device *decon)
@@ -3254,7 +3211,6 @@ struct exynos_dqe *exynos_dqe_register(struct decon_device *decon)
 	dqe->xml_suffix[0] = '\0';
 	dqe_init_context(dqe, decon->dev);
 
-	dqe->funcs = &dqe_funcs;
 	dqe->state = DQE_STATE_DISABLE;
 	dqe->initialized = true;
 

@@ -602,62 +602,39 @@ static void __exynos_hdr_disable(struct exynos_hdr *hdr)
 	hdr_debug(hdr, "%s -\n", __func__);
 }
 
-static const struct exynos_hdr_funcs hdr_funcs = {
-	.dump = __exynos_hdr_dump,
-	.prepare = __exynos_hdr_prepare,
-	.update = __exynos_hdr_update,
-	.disable = __exynos_hdr_disable,
-};
-
 void exynos_hdr_dump(struct exynos_hdr *hdr)
 {
-	const struct exynos_hdr_funcs *funcs;
-
 	if (!hdr || hdr->initialized == false)
 		return;
 
-	funcs = hdr->funcs;
-	if (funcs)
-		funcs->dump(hdr);
+	__exynos_hdr_dump(hdr);
 }
 
 void exynos_hdr_prepare(struct exynos_hdr *hdr,
 			struct exynos_drm_plane_state *exynos_plane_state)
 
 {
-	const struct exynos_hdr_funcs *funcs;
-
 	if (!hdr || hdr->initialized == false || !exynos_plane_state)
 		return;
 
-	funcs = hdr->funcs;
-	if (funcs)
-		funcs->prepare(hdr, exynos_plane_state);
+	__exynos_hdr_prepare(hdr, exynos_plane_state);
 }
 
 void exynos_hdr_update(struct exynos_hdr *hdr,
 			const struct exynos_drm_plane_state *exynos_plane_state)
 {
-	const struct exynos_hdr_funcs *funcs;
-
 	if (!hdr || hdr->initialized == false || !exynos_plane_state)
 		return;
 
-	funcs = hdr->funcs;
-	if (funcs)
-		funcs->update(hdr, exynos_plane_state);
+	__exynos_hdr_update(hdr, exynos_plane_state);
 }
 
 void exynos_hdr_disable(struct exynos_hdr *hdr)
 {
-	const struct exynos_hdr_funcs *funcs;
-
 	if (!hdr || hdr->initialized == false)
 		return;
 
-	funcs = hdr->funcs;
-	if (funcs)
-		funcs->disable(hdr);
+	__exynos_hdr_disable(hdr);
 }
 
 struct exynos_hdr *exynos_hdr_register(struct dpp_device *dpp)
@@ -692,7 +669,6 @@ struct exynos_hdr *exynos_hdr_register(struct dpp_device *dpp)
 	mutex_init(&hdr->lock);
 	init_waitqueue_head(&hdr->wait_update);	
 	atomic_set(&hdr->ctx_no, 0);
-	hdr->funcs = &hdr_funcs;
 	hdr->state = HDR_STATE_DISABLE;
 	hdr->initialized = true;
 
