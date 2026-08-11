@@ -156,7 +156,7 @@ void qdf_op_callbacks_register(qdf_op_protect_cb on_protect,
 }
 qdf_export_symbol(qdf_op_callbacks_register);
 
-int __qdf_op_protect(struct qdf_op_sync **out_sync, const char *func)
+int __nocfi __qdf_op_protect(struct qdf_op_sync **out_sync, const char *func)
 {
 	if (!__on_op_protect)
 		return 0;
@@ -165,7 +165,7 @@ int __qdf_op_protect(struct qdf_op_sync **out_sync, const char *func)
 }
 qdf_export_symbol(__qdf_op_protect);
 
-void __qdf_op_unprotect(struct qdf_op_sync *sync, const char *func)
+void __nocfi __qdf_op_unprotect(struct qdf_op_sync *sync, const char *func)
 {
 	if (__on_op_unprotect)
 		__on_op_unprotect(sync, func);
