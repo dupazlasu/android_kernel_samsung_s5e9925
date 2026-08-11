@@ -753,15 +753,18 @@ static void __set_recovery_mode(struct exynos_recovery *recovery, char *mode)
 int exynos_recovery_set_state(struct decon_device *decon, enum recovery_state state)
 {
 	struct exynos_recovery *recovery;
+	const struct exynos_recovery_funcs *funcs;
 
 	if (!decon || state >= RECOVERY_SMAX)
 		return -EINVAL;
 
 	recovery = &decon->recovery;
-	if (!recovery)
+	if (!recovery || !recovery->funcs)
 		return -EINVAL;
 
-	__set_recovery_state(recovery, state);
+	funcs = recovery->funcs;
+	if (funcs)
+		funcs->set_state(recovery, state);
 
 	return 0;
 }
@@ -769,16 +772,19 @@ int exynos_recovery_set_state(struct decon_device *decon, enum recovery_state st
 enum recovery_state exynos_recovery_get_state(struct decon_device *decon)
 {
 	struct exynos_recovery *recovery;
+	const struct exynos_recovery_funcs *funcs;
 	enum recovery_state cstate = RECOVERY_NOT_SUPPORTED;
 
 	if (!decon)
 		return cstate;
 
 	recovery = &decon->recovery;
-	if (!recovery)
+	if (!recovery || !recovery->funcs)
 		return cstate;
 
-	cstate = __get_recovery_state(recovery);
+	funcs = recovery->funcs;
+	if (funcs)
+		cstate = funcs->get_state(recovery);
 
 	return cstate;
 }
@@ -786,18 +792,27 @@ enum recovery_state exynos_recovery_get_state(struct decon_device *decon)
 int exynos_recovery_set_mode(struct decon_device *decon, char *mode)
 {
 	struct exynos_recovery *recovery;
+	const struct exynos_recovery_funcs *funcs;
 
 	if (!decon)
 		return -EINVAL;
 
 	recovery = &decon->recovery;
-	if (!recovery)
+	if (!recovery || !recovery->funcs)
 		return -EINVAL;
 
-	__set_recovery_mode(recovery, mode);
+	funcs = recovery->funcs;
+	if (funcs)
+		funcs->set_mode(recovery, mode);
 
 	return 0;
 }
+
+static const struct exynos_recovery_funcs recovery_funcs = {
+	.set_state = __set_recovery_state,
+	.get_state = __get_recovery_state,
+	.set_mode = __set_recovery_mode,
+};
 
 static int __init_condition_params(struct exynos_recovery *recovery,
 					int id, const char *name)
@@ -955,6 +970,7 @@ void exynos_recovery_register(struct decon_device *decon)
 
 	INIT_WORK(&recovery->work, exynos_recovery_handler);
 	recovery->count = 0;
+	recovery->funcs = &recovery_funcs;
 	exynos_recovery_set_state(decon, RECOVERY_IDLE);
 	recov_info("decon#%d recovery registered\n", decon->id);
 }
