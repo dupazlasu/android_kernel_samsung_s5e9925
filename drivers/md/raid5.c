@@ -953,7 +953,8 @@ static void dispatch_bio_list(struct bio_list *tmp)
 		submit_bio_noacct(bio);
 }
 
-static int cmp_stripe(void *priv, struct list_head *a, struct list_head *b)
+static int cmp_stripe(void *priv, const struct list_head *a,
+		      const struct list_head *b)
 {
 	const struct r5pending_data *da = list_entry(a,
 				struct r5pending_data, sibling);
@@ -6348,7 +6349,13 @@ static int  retry_aligned_read(struct r5conf *conf, struct bio *raid_bio,
 		}
 
 		if (!add_stripe_bio(sh, raid_bio, dd_idx, 0, 0)) {
-			raid5_release_stripe(sh);
+			int hash;
+
+			spin_lock_irq(&conf->device_lock);
+			hash = sh->hash_lock_index;
+			__release_stripe(conf, sh,
+					 &conf->temp_inactive_list[hash]);
+			spin_unlock_irq(&conf->device_lock);
 			conf->retry_read_aligned = raid_bio;
 			conf->retry_read_offset = scnt;
 			return handled;
