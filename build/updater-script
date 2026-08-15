@@ -1,7 +1,3 @@
-ui_print(" ");
-ui_print("Installing ExtremeKernel...");
-ui_print(" ");
-
 ui_print("Installing boot image...");
 package_extract_file("files/boot.img", "/dev/block/by-name/boot");
 ui_print("Full Patching vendor_boot image...");
