@@ -23,7 +23,6 @@ FRAGMENTS=""
 KSU=false
 PERMISSIVE=false
 RECOVERY=false
-COMMIT_HASH=$(git rev-parse --short=8 HEAD)
 
 while [[ $# -gt 0 ]]; do
     if [[ "$1" == "-m" ]] || [[ "$1" == "--model" ]]; then
@@ -135,8 +134,6 @@ BUILD_KERNEL() {
     echo "Generating configuration file..."
     echo "-----------------------------------------------"
     $MAKE_CMD s5e9925_defconfig $FRAGMENTS || return 1
-
-    sed -i "s/COMMIT_HASH/$COMMIT_HASH/g" "out/.config"
 
     echo "Building kernel..."
     echo "-----------------------------------------------"
@@ -348,12 +345,14 @@ BUILD_ZIP() {
     cp "build/update-binary" "build/out/$MODEL/zip/META-INF/com/google/android/update-binary" || return 1
     cp "build/updater-script" "build/out/$MODEL/zip/META-INF/com/google/android/updater-script" || return 1
 
+    VERSION=$(grep -o 'CONFIG_LOCALVERSION="[^"]*"' arch/arm64/configs/s5e9925_defconfig | cut -d '"' -f 2)
+    VERSION=${VERSION:1}
     DATE="$(date +"%d-%m-%Y_%H-%M-%S")"
 
     if $KSU; then
-        NAME="UN1CA_Kernel-${MODEL}_KSU_$DATE.zip"
+        NAME="${VERSION}_${MODEL}_UNOFFICIAL_KSU_$DATE.zip"
     else
-        NAME="UN1CA_Kernel-${MODEL}_$DATE.zip"
+        NAME="${VERSION}_${MODEL}_UNOFFICIAL_$DATE.zip"
     fi
 
     if [[ -f "build/out/$MODEL/$NAME" ]]; then
