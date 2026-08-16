@@ -1767,7 +1767,7 @@
 				panels {
 
 					s6e3hae_rainbow_b0 {
-						ddi = <0x34>;
+						ap-vendor-setting = <0x34>;
 						display-mode = <0x35>;
 						power-ctrl = <0x36>;
 						freq-hop = <0x37>;
@@ -14329,7 +14329,7 @@
 					panels {
 
 						s6e3hae_rainbow_b0 {
-							ddi = <0x00>;
+							ap-vendor-setting = <0x00>;
 							display-mode = <0x00>;
 							power-ctrl = <0x00>;
 							freq-hop = <0x00>;
