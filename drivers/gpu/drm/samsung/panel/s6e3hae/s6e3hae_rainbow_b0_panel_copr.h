@@ -114,9 +114,9 @@ static void *rainbow_b0_get_copr_dsi_cmdtbl[] = {
 };
 
 static struct seqinfo rainbow_b0_copr_seqtbl[] = {
-	SEQINFO_INIT("set-copr-seq", rainbow_b0_set_copr_cmdtbl),
-	SEQINFO_INIT("get-copr-spi-seq", rainbow_b0_get_copr_spi_cmdtbl),
-	SEQINFO_INIT("get-copr-dsi-seq", rainbow_b0_get_copr_dsi_cmdtbl),
+	SEQINFO_INIT(COPR_SET_SEQ, rainbow_b0_set_copr_cmdtbl),
+	SEQINFO_INIT(COPR_SPI_GET_SEQ, rainbow_b0_get_copr_spi_cmdtbl),
+	SEQINFO_INIT(COPR_DSI_GET_SEQ, rainbow_b0_get_copr_dsi_cmdtbl),
 };
 
 static struct panel_copr_data s6e3hae_rainbow_b0_copr_data = {

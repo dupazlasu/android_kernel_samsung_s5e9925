@@ -68,6 +68,8 @@ __visible_for_testing int __init s6e3hae_rainbow_b0_panel_init(void)
 	struct common_panel_info *cpi = &s6e3hae_rainbow_b0_panel_info;
 
 	s6e3hae_init(cpi);
+	panel_function_insert_array(s6e3hae_rainbow_b0_function_table,
+			ARRAY_SIZE(s6e3hae_rainbow_b0_function_table));
 #ifdef CONFIG_USDM_PANEL_SELF_DISPLAY
 	memcpy(&cpi->dumpinfo[DUMP_SELF_MASK_CHECKSUM],
 		&s6e3hae_rainbow_b0_self_mask_checksum, sizeof(struct dumpinfo));

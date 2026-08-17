@@ -1631,7 +1631,7 @@ enum {
 	MAX_RAINBOW_B0_FUNCTION,
 };
 
-static struct pnobj_func s6e3hae_rainbow_b0_function_table[MAX_RAINBOW_B0_FUNCTION] = {
+struct pnobj_func s6e3hae_rainbow_b0_function_table[MAX_RAINBOW_B0_FUNCTION] = {
 	[RAINBOW_B0_GETIDX_RESOLUTION_TABLE] = __PNOBJ_FUNC_INITIALIZER(RAINBOW_B0_GETIDX_RESOLUTION_TABLE, rainbow_b0_getidx_resolution_table),
 	[RAINBOW_B0_GETIDX_DSC_TABLE] = __PNOBJ_FUNC_INITIALIZER(RAINBOW_B0_GETIDX_DSC_TABLE, rainbow_b0_getidx_dsc_table),
 #ifdef CONFIG_SUPPORT_GRAYSPOT_TEST
