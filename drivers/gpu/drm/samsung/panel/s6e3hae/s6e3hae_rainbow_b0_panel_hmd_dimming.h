@@ -1,7 +1,7 @@
 /*
- * linux/drivers/video/fbdev/exynos/panel/s6e3haf/s6e3haf_e2s_panel_hmd_dimming.h
+ * linux/drivers/video/fbdev/exynos/panel/s6e3hae/s6e3hae_rainbow_b0_panel_hmd_dimming.h
  *
- * Header file for S6E3HAF Dimming Driver
+ * Header file for S6E3HAE Dimming Driver
  *
  * Copyright (c) 2016 Samsung Electronics
  *
@@ -10,17 +10,17 @@
  * published by the Free Software Foundation.
  */
 
-#ifndef __S6E3HAF_E2S_PANEL_HMD_DIMMING_H__
-#define __S6E3HAF_E2S_PANEL_HMD_DIMMING_H__
+#ifndef __S6E3HAE_RAINBOW_B0_PANEL_HMD_DIMMING_H__
+#define __S6E3HAE_RAINBOW_B0_PANEL_HMD_DIMMING_H__
 #include "../dimming.h"
 #include "../panel_dimming.h"
-#include "s6e3haf_dimming.h"
+#include "s6e3hae_dimming.h"
 
-#define S6E3HAF_HMD_NR_STEP (256)
-#define S6E3HAF_HMD_HBM_STEP (0)
-#define S6E3HAF_HMD_TOTAL_STEP (S6E3HAF_HMD_NR_STEP + S6E3HAF_HMD_HBM_STEP)
+#define S6E3HAE_HMD_NR_STEP (256)
+#define S6E3HAE_HMD_HBM_STEP (0)
+#define S6E3HAE_HMD_TOTAL_STEP (S6E3HAE_HMD_NR_STEP + S6E3HAE_HMD_HBM_STEP)
 
-static unsigned int e2s_hmd_brt_tbl[S6E3HAF_HMD_TOTAL_STEP] = {
+static unsigned int rainbow_b0_hmd_brt_tbl[S6E3HAE_HMD_TOTAL_STEP] = {
 	BRT(0), BRT(1), BRT(2), BRT(3), BRT(4), BRT(5), BRT(6), BRT(7), BRT(8), BRT(9), BRT(10),
 	BRT(11), BRT(12), BRT(13), BRT(14), BRT(15), BRT(16), BRT(17), BRT(18), BRT(19), BRT(20),
 	BRT(21), BRT(22), BRT(23), BRT(24), BRT(25), BRT(26), BRT(27), BRT(28), BRT(29), BRT(30),
@@ -49,7 +49,7 @@ static unsigned int e2s_hmd_brt_tbl[S6E3HAF_HMD_TOTAL_STEP] = {
 	BRT(251), BRT(252), BRT(253), BRT(254), BRT(255),
 };
 
-static unsigned int e2s_hmd_lum_tbl[S6E3HAF_HMD_TOTAL_STEP] = {
+static unsigned int rainbow_b0_hmd_lum_tbl[S6E3HAE_HMD_TOTAL_STEP] = {
 	20, 20, 21, 21, 21, 22, 22, 22, 23, 23,
 	23, 24, 24, 24, 25, 25, 25, 26, 26, 26,
 	27, 27, 27, 28, 28, 28, 29, 29, 29, 30,
@@ -78,49 +78,49 @@ static unsigned int e2s_hmd_lum_tbl[S6E3HAF_HMD_TOTAL_STEP] = {
 	103, 104, 104, 104, 105, 105,
 };
 
-struct gm2_dimming_init_info s6e3haf_e2s_gm2_hmd_dimming_init_info[] = {
+struct gm2_dimming_init_info s6e3hae_rainbow_b0_gm2_hmd_dimming_init_info[] = {
 	{
-		.name = "s6e3haf_e2s_gm2_hmd_dimming",
+		.name = "s6e3hae_rainbow_b0_gm2_hmd_dimming",
 	},
 };
 
-static unsigned int e2s_hmd_step_cnt_tbl[S6E3HAF_HMD_TOTAL_STEP] = {
-	[0 ... S6E3HAF_HMD_TOTAL_STEP - 1] = 1,
+static unsigned int rainbow_b0_hmd_step_cnt_tbl[S6E3HAE_HMD_TOTAL_STEP] = {
+	[0 ... S6E3HAE_HMD_TOTAL_STEP - 1] = 1,
 };
 
-static struct brightness_table s6e3haf_e2s_panel_hmd_brightness_table = {
+static struct brightness_table s6e3hae_rainbow_b0_panel_hmd_brightness_table = {
 	.control_type = BRIGHTNESS_CONTROL_TYPE_GAMMA_MODE2,
-	.brt = e2s_hmd_brt_tbl,
-	.sz_brt = ARRAY_SIZE(e2s_hmd_brt_tbl),
-	.sz_ui_brt = S6E3HAF_HMD_NR_STEP,
-	.sz_hbm_brt = S6E3HAF_HMD_HBM_STEP,
-	.lum = e2s_hmd_lum_tbl,
-	.sz_lum = ARRAY_SIZE(e2s_hmd_lum_tbl),
-	.sz_ui_lum = S6E3HAF_E2S_HMD_NR_LUMINANCE,
+	.brt = rainbow_b0_hmd_brt_tbl,
+	.sz_brt = ARRAY_SIZE(rainbow_b0_hmd_brt_tbl),
+	.sz_ui_brt = S6E3HAE_HMD_NR_STEP,
+	.sz_hbm_brt = S6E3HAE_HMD_HBM_STEP,
+	.lum = rainbow_b0_hmd_lum_tbl,
+	.sz_lum = ARRAY_SIZE(rainbow_b0_hmd_lum_tbl),
+	.sz_ui_lum = S6E3HAE_RAINBOW_B0_HMD_NR_LUMINANCE,
 	.sz_hbm_lum = 0,
 	.sz_ext_hbm_lum = 0,
 	.brt_to_step = NULL,
 	.sz_brt_to_step = 0,
-	.step_cnt = e2s_hmd_step_cnt_tbl,
-	.sz_step_cnt = ARRAY_SIZE(e2s_hmd_step_cnt_tbl),
+	.step_cnt = rainbow_b0_hmd_step_cnt_tbl,
+	.sz_step_cnt = ARRAY_SIZE(rainbow_b0_hmd_step_cnt_tbl),
 };
 
-static struct panel_dimming_info s6e3haf_e2s_panel_hmd_dimming_info = {
-	.name = "s6e3haf_e2s_hmd",
+static struct panel_dimming_info s6e3hae_rainbow_b0_panel_hmd_dimming_info = {
+	.name = "s6e3hae_rainbow_b0_hmd",
 	.dim_init_info = {
 		NULL,
 	},
-	.gm2_dim_init_info = s6e3haf_e2s_gm2_hmd_dimming_init_info,
-	.nr_gm2_dim_init_info = ARRAY_SIZE(s6e3haf_e2s_gm2_hmd_dimming_init_info),
-	.target_luminance = S6E3HAF_E2S_HMD_TARGET_LUMINANCE,
-	.nr_luminance = S6E3HAF_E2S_HMD_NR_LUMINANCE,
+	.gm2_dim_init_info = s6e3hae_rainbow_b0_gm2_hmd_dimming_init_info,
+	.nr_gm2_dim_init_info = ARRAY_SIZE(s6e3hae_rainbow_b0_gm2_hmd_dimming_init_info),
+	.target_luminance = S6E3HAE_RAINBOW_B0_HMD_TARGET_LUMINANCE,
+	.nr_luminance = S6E3HAE_RAINBOW_B0_HMD_NR_LUMINANCE,
 	.hbm_target_luminance = -1,
 	.nr_hbm_luminance = 0,
 	.extend_hbm_target_luminance = -1,
 	.nr_extend_hbm_luminance = 0,
-	.brt_tbl = &s6e3haf_e2s_panel_hmd_brightness_table,
+	.brt_tbl = &s6e3hae_rainbow_b0_panel_hmd_brightness_table,
 	/* dimming parameters */
 	.dimming_maptbl = NULL,
 	.dim_flash_on = false,	/* read dim flash when probe or not */
 };
-#endif /* __S6E3HAF_E2S_PANEL_HMD_DIMMING_H__ */
+#endif /* __S6E3HAE_RAINBOW_B0_PANEL_HMD_DIMMING_H__ */
