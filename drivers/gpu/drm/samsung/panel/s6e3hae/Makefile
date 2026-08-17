@@ -14,11 +14,7 @@ subdir-ccflags-$(CONFIG_SEC_KUNIT) += \
 
 subdir-ccflags-y += -I$(srctree)/$(src)/../oled_common
 
+mcd-panel-s6e3hae_rainbow_b0-y += s6e3hae.o s6e3hae_rainbow_b0.o
+mcd-panel-s6e3hae_rainbow_b0-$(CONFIG_USDM_PANEL_SELF_DISPLAY) += s6e3hae_aod.o
 
-subdir-ccflags-y += -I$(srctree)/$(src)/../oled_common
-
-mcd-panel-s6e3haf_e2s-y += s6e3haf.o s6e3haf_e2s.o
-mcd-panel-s6e3haf_e2s-$(CONFIG_USDM_PANEL_SELF_DISPLAY) += s6e3haf_e2s_aod.o
-
-obj-$(CONFIG_USDM_PANEL_S6E3HAF) += mcd-panel-s6e3haf_e2s.o
-
+obj-$(CONFIG_USDM_PANEL_S6E3HAE) += mcd-panel-s6e3hae_rainbow_b0.o
