@@ -305,6 +305,7 @@ enum s6e3hae_function {
 	S6E3HAE_GETIDX_LPM_FPS_TABLE,
 	S6E3HAE_GETIDX_LFD_FRAME_INSERTION_TABLE,
 	S6E3HAE_GETIDX_FFC_TABLE,
+	S6E3HAE_GETIDX_VRR_MODE_TABLE,
 	S6E3HAE_COPY_LFD_MIN,
 	S6E3HAE_COPY_LFD_MAX,
 	MAX_S6E3HAE_FUNCTION,
@@ -1324,6 +1325,7 @@ int s6e3hae_get_manufacture_date(struct panel_device *panel, void *buf);
 int s6e3hae_getidx_lpm_fps_table(struct maptbl *tbl);
 int s6e3hae_getidx_lfd_frame_insertion_table(struct maptbl *tbl);
 int s6e3hae_getidx_ffc_table(struct maptbl *tbl);
+int s6e3hae_getidx_vrr_mode_table(struct maptbl *tbl);
 void s6e3hae_maptbl_copy_lfd_min(struct maptbl *tbl, u8 *dst);
 void s6e3hae_maptbl_copy_lfd_max(struct maptbl *tbl, u8 *dst);
 #ifdef CONFIG_USDM_FACTORY_GCT_TEST

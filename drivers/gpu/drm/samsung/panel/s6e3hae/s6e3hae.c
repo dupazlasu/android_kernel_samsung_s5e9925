@@ -897,6 +897,26 @@ int s6e3hae_getidx_lpm_fps_table(struct maptbl *tbl)
 	return maptbl_index(tbl, 0, row, 0);
 }
 
+int s6e3hae_getidx_vrr_mode_table(struct maptbl *tbl)
+{
+	struct panel_device *panel = (struct panel_device *)tbl->pdata;
+	int vrr_mode, row = 0, layer = 0;
+
+	if (!tbl || !tbl->pdata)
+		return -EINVAL;
+
+	vrr_mode = get_panel_refresh_mode(panel);
+	if (vrr_mode < 0)
+		return -EINVAL;
+
+	row = (vrr_mode == S6E3HAE_VRR_MODE_HS) ?
+		S6E3HAE_VRR_MODE_HS : S6E3HAE_VRR_MODE_NS;
+	panel_dbg("vrr_mode:%d(%s)\n", vrr_mode,
+			vrr_mode == S6E3HAE_VRR_MODE_HS ? "HS" : "NM");
+
+	return maptbl_index(tbl, layer, row, 0);
+}
+
 int s6e3hae_getidx_lfd_frame_insertion_table(struct maptbl *tbl)
 {
 	struct panel_device *panel = (struct panel_device *)tbl->pdata;
@@ -1445,6 +1465,7 @@ struct pnobj_func s6e3hae_function_table[MAX_S6E3HAE_FUNCTION] = {
 	[S6E3HAE_GETIDX_LPM_FPS_TABLE] = __PNOBJ_FUNC_INITIALIZER(S6E3HAE_GETIDX_LPM_FPS_TABLE, s6e3hae_getidx_lpm_fps_table),
 	[S6E3HAE_GETIDX_LFD_FRAME_INSERTION_TABLE] = __PNOBJ_FUNC_INITIALIZER(S6E3HAE_GETIDX_LFD_FRAME_INSERTION_TABLE, s6e3hae_getidx_lfd_frame_insertion_table),
 	[S6E3HAE_GETIDX_FFC_TABLE] = __PNOBJ_FUNC_INITIALIZER(S6E3HAE_GETIDX_FFC_TABLE, s6e3hae_getidx_ffc_table),
+	[S6E3HAE_GETIDX_VRR_MODE_TABLE] = __PNOBJ_FUNC_INITIALIZER(S6E3HAE_GETIDX_VRR_MODE_TABLE, s6e3hae_getidx_vrr_mode_table),
 	[S6E3HAE_COPY_LFD_MIN] = __PNOBJ_FUNC_INITIALIZER(S6E3HAE_COPY_LFD_MIN, s6e3hae_maptbl_copy_lfd_min),
 	[S6E3HAE_COPY_LFD_MAX] = __PNOBJ_FUNC_INITIALIZER(S6E3HAE_COPY_LFD_MAX, s6e3hae_maptbl_copy_lfd_max),
 };

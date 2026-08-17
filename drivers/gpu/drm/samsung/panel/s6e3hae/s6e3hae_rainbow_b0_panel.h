@@ -1739,8 +1739,9 @@ static struct maptbl rainbow_b0_maptbl[MAX_MAPTBL] = {
 			S6E3HAE_VRR_PROPERTY),
 	[VFP_MAPTBL] = __OLED_MAPTBL_DEFAULT_INITIALIZER(rainbow_b0_vfp_table,
 			S6E3HAE_VRR_PROPERTY),
-	[OSC_MAPTBL] = __OLED_MAPTBL_DEFAULT_INITIALIZER(rainbow_b0_osc_table,
-			S6E3HAE_VRR_PROPERTY),
+	[OSC_MAPTBL] = DEFINE_2D_MAPTBL(rainbow_b0_osc_table,
+			&OLED_FUNC(OLED_MAPTBL_INIT_DEFAULT), &DDI_FUNC(S6E3HAE_GETIDX_VRR_MODE_TABLE),
+			&OLED_FUNC(OLED_MAPTBL_COPY_DEFAULT)),
 	[LFD_MIN_MAPTBL] = DEFINE_0D_MAPTBL(rainbow_b0_lfd_min_table,
 			&OLED_FUNC(OLED_MAPTBL_INIT_DEFAULT), &OLED_FUNC(OLED_MAPTBL_GETIDX_DEFAULT),
 			&DDI_FUNC(S6E3HAE_COPY_LFD_MIN)),
@@ -1760,13 +1761,13 @@ static struct maptbl rainbow_b0_maptbl[MAX_MAPTBL] = {
 			rainbow_b0_lfd_frame_insertion_onoff_table, S6E3HAE_VRR_PROPERTY),
 	[LFD_3C_UPDATE_MAPTBL] = __OLED_MAPTBL_DEFAULT_INITIALIZER(rainbow_b0_lfd_3c_update_table,
 			S6E3HAE_VRR_PROPERTY),
-	[LFD_FRAME_INSERTION_1_MAPTBL] = DEFINE_2D_MAPTBL(rainbow_b0_lfd_frame_insertion_1_table,
+	[LFD_FRAME_INSERTION_1_MAPTBL] = DEFINE_3D_MAPTBL(rainbow_b0_lfd_frame_insertion_1_table,
 			&OLED_FUNC(OLED_MAPTBL_INIT_DEFAULT), &DDI_FUNC(S6E3HAE_GETIDX_LFD_FRAME_INSERTION_TABLE),
 			&OLED_FUNC(OLED_MAPTBL_COPY_DEFAULT)),
-	[LFD_FRAME_INSERTION_2_MAPTBL] = DEFINE_2D_MAPTBL(rainbow_b0_lfd_frame_insertion_2_table,
+	[LFD_FRAME_INSERTION_2_MAPTBL] = DEFINE_3D_MAPTBL(rainbow_b0_lfd_frame_insertion_2_table,
 			&OLED_FUNC(OLED_MAPTBL_INIT_DEFAULT), &DDI_FUNC(S6E3HAE_GETIDX_LFD_FRAME_INSERTION_TABLE),
 			&OLED_FUNC(OLED_MAPTBL_COPY_DEFAULT)),
-	[LFD_FRAME_INSERTION_3_MAPTBL] = DEFINE_2D_MAPTBL(rainbow_b0_lfd_frame_insertion_3_table,
+	[LFD_FRAME_INSERTION_3_MAPTBL] = DEFINE_3D_MAPTBL(rainbow_b0_lfd_frame_insertion_3_table,
 			&OLED_FUNC(OLED_MAPTBL_INIT_DEFAULT), &DDI_FUNC(S6E3HAE_GETIDX_LFD_FRAME_INSERTION_TABLE),
 			&OLED_FUNC(OLED_MAPTBL_COPY_DEFAULT)),
 	[DIA_ONOFF_MAPTBL] = __OLED_MAPTBL_DEFAULT_INITIALIZER(rainbow_b0_dia_onoff_table,
@@ -3151,11 +3152,27 @@ static void *rainbow_b0_set_fps_param_cmdtbl[] = {
 static DEFINE_SEQINFO(rainbow_b0_set_fps_param_seq,
 		rainbow_b0_set_fps_param_cmdtbl);
 
+static DEFINE_RULE_BASED_COND(rainbow_b0_cond_is_mres_changed,
+		PANEL_PROPERTY_RESOLUTION_CHANGED, EQ, true);
+
+static void *rainbow_b0_set_mres_param_cmdtbl[] = {
+	&PKTINFO(rainbow_b0_dsc),
+	&PKTINFO(rainbow_b0_pps),
+	&PKTINFO(rainbow_b0_caset),
+	&PKTINFO(rainbow_b0_paset),
+	&PKTINFO(rainbow_b0_scaler),
+};
+static DEFINE_SEQINFO(rainbow_b0_set_mres_param_seq,
+		rainbow_b0_set_mres_param_cmdtbl);
+
 #if defined(CONFIG_USDM_PANEL_DISPLAY_MODE)
 static void *rainbow_b0_display_mode_cmdtbl[] = {
 	&KEYINFO(rainbow_b0_level1_key_enable),
 	&KEYINFO(rainbow_b0_level2_key_enable),
 	&CONDINFO_IF(rainbow_b0_cond_is_panel_state_not_lpm),
+		&CONDINFO_IF(rainbow_b0_cond_is_mres_changed),
+			&SEQINFO(rainbow_b0_set_mres_param_seq),
+		&CONDINFO_FI(rainbow_b0_cond_is_mres_changed),
 		&CONDINFO_IF(rainbow_b0_cond_is_96hs_based_fps),
 			&PKTINFO(rainbow_b0_glut),
 		&CONDINFO_FI(rainbow_b0_cond_is_96hs_based_fps),
