@@ -1157,12 +1157,12 @@ void is_debug_event_print(is_event_store_type_t event_store_type,
 	/* ptrdata should be used in non-atomic context */
 	if (!in_atomic()) {
 		if (event_log->ptrdata) {
-			vfree(event_log->ptrdata);
+			pablo_free(event_log->ptrdata);
 			event_log->ptrdata = NULL;
 		}
 
 		if (datasize) {
-			event_log->ptrdata = vmalloc(datasize);
+			event_log->ptrdata = pablo_malloc(datasize, GFP_KERNEL);
 			if (event_log->ptrdata)
 				memcpy(event_log->ptrdata, ptrdata, datasize);
 			else

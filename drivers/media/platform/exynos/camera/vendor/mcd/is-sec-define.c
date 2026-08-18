@@ -2600,7 +2600,7 @@ int is_sec_inflate_fw(u8 **buf, unsigned long *size)
 	int ret = 0;
 	char *unzip_buf;
 
-	unzip_buf = vmalloc(IS_MAX_FW_BUFFER_SIZE);
+	unzip_buf = pablo_malloc(IS_MAX_FW_BUFFER_SIZE, GFP_KERNEL);
 	if (!unzip_buf) {
 		err("failed to allocate memory\n");
 		ret = -ENOMEM;
@@ -2608,7 +2608,7 @@ int is_sec_inflate_fw(u8 **buf, unsigned long *size)
 	}
 	memset(unzip_buf, 0x0, IS_MAX_FW_BUFFER_SIZE);
 
-	zs_inflate.workspace = vmalloc(zlib_inflate_workspacesize());
+	zs_inflate.workspace = pablo_malloc(zlib_inflate_workspacesize(), GFP_KERNEL);
 	ret = zlib_inflateInit2(&zs_inflate, -MAX_WBITS);
 	if (ret != Z_OK) {
 		err("Camera : inflateInit error\n");
@@ -2625,12 +2625,12 @@ int is_sec_inflate_fw(u8 **buf, unsigned long *size)
 	}
 
 	zlib_inflateEnd(&zs_inflate);
-	vfree(zs_inflate.workspace);
+	pablo_free(zs_inflate.workspace);
 
 	*size = IS_MAX_FW_BUFFER_SIZE - zs_inflate.avail_out;
 	memset(*buf, 0x0, IS_MAX_FW_BUFFER_SIZE);
 	memcpy(*buf, unzip_buf, *size);
-	vfree(unzip_buf);
+	pablo_free(unzip_buf);
 
 exit:
 	return ret;
@@ -3387,7 +3387,7 @@ int is_sec_fw_sel_eeprom(int rom_id, bool headerOnly)
 #endif
 	{
 		info("Phone FW size is larger than FW buffer. Use vmalloc.\n");
-		read_buf = vmalloc(fsize);
+		read_buf = pablo_malloc(fsize, GFP_KERNEL);
 		if (!read_buf) {
 			err("failed to allocate memory");
 			ret = -ENOMEM;
@@ -3408,7 +3408,7 @@ int is_sec_fw_sel_eeprom(int rom_id, bool headerOnly)
 
 read_phone_fw_exit:
 	if (read_buf) {
-		vfree(read_buf);
+		pablo_free(read_buf);
 		read_buf = NULL;
 		temp_buf = NULL;
 	}

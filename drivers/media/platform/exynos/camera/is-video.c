@@ -2548,9 +2548,9 @@ static struct is_video_ctx *is_vctx_open(struct file *file,
 		return ERR_PTR(-EINVAL);
 	}
 
-	ivc = vzalloc(sizeof(struct is_video_ctx));
+	ivc = pablo_zalloc(sizeof(struct is_video_ctx), GFP_KERNEL);
 	if (!ivc) {
-		err("[V%02d] vzalloc is fail", video->id);
+		err("[V%02d] pablo_zalloc is fail", video->id);
 		return ERR_PTR(-ENOMEM);
 	}
 
@@ -2569,7 +2569,7 @@ static int is_vctx_close(struct file *file,
 	struct is_video *video,
 	struct is_video_ctx *vctx)
 {
-	vfree(vctx);
+	pablo_free(vctx);
 	file->private_data = NULL;
 
 	return vref_put(video, NULL);
@@ -2615,7 +2615,7 @@ static int __is_video_open(struct is_video_ctx *ivc,
 		return ret;
 	}
 
-	iq->vbq = vzalloc(sizeof(struct vb2_queue));
+	iq->vbq = pablo_zalloc(sizeof(struct vb2_queue), GFP_KERNEL);
 	if (!iq->vbq) {
 		mverr("out of memory for vbq", ivc, iv);
 		return -ENOMEM;
@@ -2624,7 +2624,7 @@ static int __is_video_open(struct is_video_ctx *ivc,
 	ret = queue_init(ivc, iq->vbq, NULL);
 	if (ret) {
 		mverr("failure in queue_init(): %d", ivc, iv, ret);
-		vfree(iq->vbq);
+		pablo_free(iq->vbq);
 		iq->vbq = NULL;
 		return ret;
 	}
@@ -2645,7 +2645,7 @@ static int __is_video_close(struct is_video_ctx *ivc)
 	}
 
 	vb2_queue_release(iq->vbq);
-	vfree(iq->vbq);
+	pablo_free(iq->vbq);
 	iq->vbq = NULL;
 	is_queue_close(iq);
 

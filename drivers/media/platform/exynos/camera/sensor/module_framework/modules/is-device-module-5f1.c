@@ -974,7 +974,7 @@ int sensor_5f1_probe(struct i2c_client *client,
 
 	probe_info("%s(%d) pdata->id = %d\n", __func__, ret, pdata->id);
 
-	subdev_module = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_module = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_module) {
 		err("subdev_module is NULL");
 		ret = -ENOMEM;
@@ -1007,7 +1007,7 @@ int sensor_5f1_probe(struct i2c_client *client,
 	module->cfg = config_5f1;
 
 	/* Sensor peri */
-	module->private_data = kzalloc(sizeof(struct is_device_sensor_peri), GFP_KERNEL);
+	module->private_data = pablo_zalloc(sizeof(struct is_device_sensor_peri), GFP_KERNEL);
 	if (!module->private_data) {
 		probe_err("is_device_sensor_peri is NULL");
 		ret = -ENOMEM;
@@ -1015,7 +1015,7 @@ int sensor_5f1_probe(struct i2c_client *client,
 	}
 
 	(((struct is_device_sensor_peri *)module->private_data)->cis).cis_data
-		= kzalloc(sizeof(cis_shared_data), GFP_KERNEL);
+		= pablo_zalloc(sizeof(cis_shared_data), GFP_KERNEL);
 
 	is_sensor_peri_probe((struct is_device_sensor_peri *)module->private_data);
 	PERI_SET_MODULE(module);

@@ -88,7 +88,8 @@ static inline void mfc_mem_buf_prepare(struct vb2_buffer *vb, int stream)
 		ret = -ENOTSUPP;
 		if (stream && dbuf->ops->end_cpu_access_partial)
 			ret = dma_buf_end_cpu_access_partial(dbuf, dir,
-					0, vb2_get_plane_payload(vb, i));
+					vb->planes[i].data_offset,
+					(vb2_get_plane_payload(vb, i) - vb->planes[i].data_offset));
 
                 if (ret < 0)
 			dma_buf_end_cpu_access(dbuf, dir);
@@ -110,7 +111,8 @@ static inline void mfc_mem_buf_finish(struct vb2_buffer *vb, int stream)
 		ret = -ENOTSUPP;
 		if (stream && dbuf->ops->begin_cpu_access_partial)
 			ret = dma_buf_begin_cpu_access_partial(dbuf, DMA_FROM_DEVICE,
-					0, vb2_get_plane_payload(vb, i));
+					vb->planes[i].data_offset,
+					(vb2_get_plane_payload(vb, i) - vb->planes[i].data_offset));
 
 		if (ret < 0)
 			dma_buf_begin_cpu_access(dbuf, DMA_FROM_DEVICE);
@@ -171,6 +173,8 @@ static inline void mfc_print_dpb_table(struct mfc_ctx *ctx)
 
 struct vb2_mem_ops *mfc_mem_ops(void);
 
+int mfc_mem_vmem_alloc(struct mfc_dev *dev, void **vmem, size_t size, char *name);
+void mfc_mem_vmem_free(struct mfc_dev *dev, void **vmem, char *name);
 void mfc_mem_set_cacheable(bool cacheable);
 int mfc_mem_get_user_shared_handle(struct mfc_ctx *ctx,
 	struct mfc_user_shared_handle *handle, char *name);

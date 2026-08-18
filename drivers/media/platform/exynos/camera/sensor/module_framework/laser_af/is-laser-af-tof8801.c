@@ -111,18 +111,18 @@ static int __init laser_af_tof8801_probe(struct device *dev, struct i2c_client *
 		return -EPROBE_DEFER;
 	}
 
-	laser_af = kzalloc(sizeof(struct is_laser_af), GFP_KERNEL);
+	laser_af = pablo_zalloc(sizeof(struct is_laser_af), GFP_KERNEL);
 	if (!laser_af) {
 		err("laser is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	subdev_laser_af = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_laser_af = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_laser_af) {
 		err("subdev_laser is NULL");
 		ret = -ENOMEM;
-		kfree(laser_af);
+		pablo_free(laser_af);
 		goto p_err;
 	}
 

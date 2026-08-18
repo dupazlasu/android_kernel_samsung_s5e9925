@@ -429,7 +429,7 @@ static int __nocfi is_hw_orbmch_open(struct is_hw_ip *hw_ip, u32 instance, struc
 	frame_manager_probe(hw_ip->framemgr, hw_ip->id, "HWORBMCH");
 	frame_manager_open(hw_ip->framemgr, IS_MAX_HW_FRAME);
 
-	hw_ip->priv_info = vzalloc(sizeof(struct is_hw_orbmch));
+	hw_ip->priv_info = pablo_zalloc(sizeof(struct is_hw_orbmch), GFP_KERNEL);
 	if (!hw_ip->priv_info) {
 		mserr_hw("hw_ip->priv_info(null)", instance, hw_ip);
 		ret = -ENOMEM;
@@ -452,7 +452,7 @@ static int __nocfi is_hw_orbmch_open(struct is_hw_ip *hw_ip, u32 instance, struc
 
 	/* init iq_set */
 	for (i = 0; i < IS_STREAM_COUNT; i++) {
-		hw_orbmch->iq_set[i].regs = vzalloc(sizeof(struct cr_set) * reg_cnt);
+		hw_orbmch->iq_set[i].regs = pablo_zalloc(sizeof(struct cr_set) * reg_cnt, GFP_KERNEL);
 		if (!hw_orbmch->iq_set[i].regs) {
 			mserr_hw("failed to alloc iq_set.regs", instance, hw_ip);
 			ret = -ENOMEM;
@@ -464,7 +464,7 @@ static int __nocfi is_hw_orbmch_open(struct is_hw_ip *hw_ip, u32 instance, struc
 	}
 	/* init cur_iq_set */
 	for (i = 0; i < COREX_MAX; i++) {
-		hw_orbmch->cur_iq_set[i].regs = vzalloc(sizeof(struct cr_set) * reg_cnt);
+		hw_orbmch->cur_iq_set[i].regs = pablo_zalloc(sizeof(struct cr_set) * reg_cnt, GFP_KERNEL);
 		if (!hw_orbmch->cur_iq_set[i].regs) {
 			mserr_hw("failed to alloc cur_iq_set regs", instance, hw_ip);
 			ret = -ENOMEM;
@@ -505,19 +505,19 @@ static int __nocfi is_hw_orbmch_open(struct is_hw_ip *hw_ip, u32 instance, struc
 err_regs_alloc:
 	for (i = 0; i < IS_STREAM_COUNT; i++) {
 		if (hw_orbmch->iq_set[i].regs) {
-			vfree(hw_orbmch->iq_set[i].regs);
+			pablo_free(hw_orbmch->iq_set[i].regs);
 			hw_orbmch->iq_set[i].regs = NULL;
 		}
 	}
 	for (i = 0; i < COREX_MAX; i++) {
 		if (hw_orbmch->cur_iq_set[i].regs) {
-			vfree(hw_orbmch->cur_iq_set[i].regs);
+			pablo_free(hw_orbmch->cur_iq_set[i].regs);
 			hw_orbmch->cur_iq_set[i].regs = NULL;
 		}
 	}
 err_chain_create:
 err_lib_func:
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 err_alloc:
 	frame_manager_close(hw_ip->framemgr);
@@ -655,18 +655,18 @@ static int is_hw_orbmch_close(struct is_hw_ip *hw_ip, u32 instance)
 
 	for (i = 0; i < COREX_MAX; i++) {
 		if (hw_orbmch->iq_set[i].regs) {
-			vfree(hw_orbmch->iq_set[i].regs);
+			pablo_free(hw_orbmch->iq_set[i].regs);
 			hw_orbmch->iq_set[i].regs = NULL;
 		}
 	}
 	for (i = 0; i < COREX_MAX; i++) {
 		if (hw_orbmch->cur_iq_set[i].regs) {
-			vfree(hw_orbmch->cur_iq_set[i].regs);
+			pablo_free(hw_orbmch->cur_iq_set[i].regs);
 			hw_orbmch->cur_iq_set[i].regs = NULL;
 		}
 	}
 
-	vfree(hw_orbmch);
+	pablo_free(hw_orbmch);
 	hw_ip->priv_info = NULL;
 
 	frame_manager_close(hw_ip->framemgr);

@@ -376,41 +376,36 @@ int mfc_core_set_dec_stream_buffer(struct mfc_core *core, struct mfc_ctx *ctx,
 		struct mfc_buf *mfc_buf, unsigned int start_num_byte,
 		unsigned int strm_size)
 {
-	unsigned int need_cpb_buf_size = 0;
-	dma_addr_t addr;
+	size_t need_cpb_buf_size = 0, buf_size = 0;
+	dma_addr_t addr = 0;
 	struct vb2_buffer *vb = NULL;
-	int index = -1;
-	size_t sg_size = 0;
 
 	mfc_debug_enter();
 
 	if (mfc_buf) {
 		vb = &mfc_buf->vb.vb2_buf;
-		need_cpb_buf_size = ALIGN(strm_size + 511, STREAM_BUF_ALIGN);
-		index = vb->index;
 		addr = mfc_buf->addr[0][0];
-		sg_size = mfc_buf->sg_size;
 
-		if (sg_size < need_cpb_buf_size) {
-			mfc_ctx_info("Decrease buffer size: %u -> %zu\n",
-					need_cpb_buf_size, sg_size);
-			need_cpb_buf_size = (unsigned int)sg_size;
-		}
+		need_cpb_buf_size = ALIGN(strm_size + 511, STREAM_BUF_ALIGN);
+		buf_size = mfc_buf->sg_size;
+
+		if (buf_size < need_cpb_buf_size)
+			mfc_ctx_info("Decrease buffer size: %zu(need) -> %zu(alloc)\n",
+					need_cpb_buf_size, buf_size);
+
 		mfc_debug(2, "[BUFINFO] ctx[%d] set src index: %d(%d), addr: 0x%08llx\n",
-				ctx->num, index, mfc_buf->src_index, addr);
-	} else {
-		addr = 0;
+				ctx->num, vb->index, mfc_buf->src_index, addr);
 	}
 
-	mfc_debug(2, "[STREAM] strm_size, %#x, %d, need_buf_size, %u, sg_size, %zu, offset: %u\n",
-			strm_size, strm_size, need_cpb_buf_size, sg_size, start_num_byte);
+	mfc_debug(2, "[STREAM] strm_size, %#x, %d, need_buf_size, %zu, buf_size, %zu, offset: %u\n",
+			strm_size, strm_size, need_cpb_buf_size, buf_size, start_num_byte);
 
 	if (strm_size == 0)
 		mfc_ctx_info("stream size is 0\n");
 
 	MFC_CORE_WRITEL(strm_size, MFC_REG_D_STREAM_DATA_SIZE);
 	MFC_CORE_WRITEL(addr, MFC_REG_D_CPB_BUFFER_ADDR);
-	MFC_CORE_WRITEL(need_cpb_buf_size, MFC_REG_D_CPB_BUFFER_SIZE);
+	MFC_CORE_WRITEL(buf_size, MFC_REG_D_CPB_BUFFER_SIZE);
 	MFC_CORE_WRITEL(start_num_byte, MFC_REG_D_CPB_BUFFER_OFFSET);
 	ctx->last_src_addr = addr;
 

@@ -123,7 +123,6 @@ static int is_hw_lme_handle_interrupt(u32 id, void *context)
 	u32 status, instance, hw_fcount, strip_index, set_id, hl = 0, vl = 0;
 	int f_err;
 	int hw_slot;
-	u32 idle = 0;
 
 	hw_ip = (struct is_hw_ip *)context;
 
@@ -174,13 +173,6 @@ static int is_hw_lme_handle_interrupt(u32 id, void *context)
 
 	if (lme_hw_is_occurred(status, INTR_FRAME_START)) {
 		dbg_lme(4, "[%d][F:%d]F.S\n", instance, hw_fcount);
-
-		/*Debug for LME timeout issue*/
-		idle = lme_hw_check_idle(hw_ip->regs[REG_SETA], set_id);
-		if(idle >= 0x11){
-			dbg_lme(0, "[%d][F:%d][idle:%d] do lme dump\n", instance, hw_fcount, idle);
-			lme_hw_dump(hw_ip->regs[REG_SETA]);
-		}
 
 		if (IS_ENABLED(LME_DDK_LIB_CALL)) {
 			is_lib_isp_event_notifier(hw_ip, &hw_lme->lib[instance],
@@ -391,7 +383,7 @@ static int __nocfi is_hw_lme_open(struct is_hw_ip *hw_ip, u32 instance,
 	frame_manager_probe(hw_ip->framemgr, hw_ip->id, "HWLME");
 	frame_manager_open(hw_ip->framemgr, IS_MAX_HW_FRAME);
 
-	hw_ip->priv_info = vzalloc(sizeof(struct is_hw_lme));
+	hw_ip->priv_info = pablo_zalloc(sizeof(struct is_hw_lme), GFP_KERNEL);
 	if (!hw_ip->priv_info) {
 		mserr_hw("hw_ip->priv_info(null)", instance, hw_ip);
 		ret = -ENOMEM;
@@ -433,7 +425,7 @@ static int __nocfi is_hw_lme_open(struct is_hw_ip *hw_ip, u32 instance,
 	}
 
 	for (i = 0; i < IS_STREAM_COUNT; ++i) {
-		hw_lme->iq_set[i].regs = vzalloc(sizeof(struct cr_set) * reg_cnt);
+		hw_lme->iq_set[i].regs = pablo_zalloc(sizeof(struct cr_set) * reg_cnt, GFP_KERNEL);
 		if (!hw_lme->iq_set[i].regs) {
 			mserr_hw("failed to alloc iq_set.regs", instance, hw_ip);
 			ret = -ENOMEM;
@@ -442,7 +434,7 @@ static int __nocfi is_hw_lme_open(struct is_hw_ip *hw_ip, u32 instance,
 	}
 
 	for (j = 0; j < COREX_MAX; ++j) {
-		hw_lme->cur_hw_iq_set[j].regs = vzalloc(sizeof(struct cr_set) * reg_cnt);
+		hw_lme->cur_hw_iq_set[j].regs = pablo_zalloc(sizeof(struct cr_set) * reg_cnt, GFP_KERNEL);
 		if (!hw_lme->cur_hw_iq_set[j].regs) {
 			mserr_hw("failed to alloc cur_iq_set.regs", instance, hw_ip);
 			ret = -ENOMEM;
@@ -466,13 +458,13 @@ static int __nocfi is_hw_lme_open(struct is_hw_ip *hw_ip, u32 instance,
 
 err_cur_regs_alloc:
 	while (j-- > 0) {
-		vfree(hw_lme->cur_hw_iq_set[j].regs);
+		pablo_free(hw_lme->cur_hw_iq_set[j].regs);
 		hw_lme->cur_hw_iq_set[j].regs = NULL;
 	}
 
 err_regs_alloc:
 	while (i-- > 0) {
-		vfree(hw_lme->iq_set[i].regs);
+		pablo_free(hw_lme->iq_set[i].regs);
 		hw_lme->iq_set[i].regs = NULL;
 	}
 
@@ -481,7 +473,7 @@ err_regs_alloc:
 
 err_chain_create:
 err_lib_func:
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 err_alloc:
 	frame_manager_close(hw_ip->framemgr);
@@ -634,19 +626,19 @@ static int is_hw_lme_close(struct is_hw_ip *hw_ip, u32 instance)
 
 	for (i = 0; i < COREX_MAX; ++i) {
 		if (hw_lme->cur_hw_iq_set[i].regs) {
-			vfree(hw_lme->cur_hw_iq_set[i].regs);
+			pablo_free(hw_lme->cur_hw_iq_set[i].regs);
 			hw_lme->cur_hw_iq_set[i].regs = NULL;
 		}
 	}
 
 	for (i = 0; i < IS_STREAM_COUNT; ++i) {
 		if (hw_lme->iq_set[i].regs) {
-			vfree(hw_lme->iq_set[i].regs);
+			pablo_free(hw_lme->iq_set[i].regs);
 			hw_lme->iq_set[i].regs = NULL;
 		}
 	}
 
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 
 	frame_manager_close(hw_ip->framemgr);
@@ -810,8 +802,13 @@ static int __is_hw_lme_set_rdma(struct is_hw_ip *hw_ip, struct is_hw_lme *hw_lme
 			total_width = 2 * DIV_ROUND_UP(param_set->dma.output_width, 16);
 			line_count = DIV_ROUND_UP(param_set->dma.output_height, 16);
 
-			input_dva[0] = hw_lme->mbmv1_dva[0] + total_width * (line_count - 1);
-			input_dva[1] = hw_lme->mbmv0_dva[0];
+			if (IS_ENABLED(LME_PERFRAME_SWRESET) && !hw_lme->config[instance].first_frame) {
+				input_dva[0] = hw_lme->mbmv0_dva[0];
+				input_dva[1] = hw_lme->mbmv1_dva[0] + total_width * (line_count - 1);
+			} else {
+				input_dva[0] = hw_lme->mbmv1_dva[0] + total_width * (line_count - 1);
+				input_dva[1] = hw_lme->mbmv0_dva[0];
+			}
 		}
 		cmd = param_set->dma.cur_input_cmd;
 		break;
@@ -1169,7 +1166,10 @@ static int __is_hw_lme_set_size_regs(struct is_hw_ip *hw_ip, struct lme_param_se
 	lme_hw_s_mvct_size(hw_ip->regs[REG_SETA], set_id, cur_width, cur_height);
 
 #if (DDK_INTERFACE_VER == 0x1010)
-	lme_hw_s_first_frame(hw_ip->regs[REG_SETA], set_id, config->first_frame);
+	if (IS_ENABLED(LME_PERFRAME_SWRESET))
+		lme_hw_s_first_frame(hw_ip->regs[REG_SETA], set_id, 1); /* for per frame rotation reset */
+	else
+		lme_hw_s_first_frame(hw_ip->regs[REG_SETA], set_id, config->first_frame);
 #endif
 
 	spin_unlock_irqrestore(&lme_out_slock, flag);
@@ -1220,6 +1220,11 @@ static int is_hw_lme_shot(struct is_hw_ip *hw_ip, struct is_frame *frame,
 	device = hw_ip->group[instance]->device;
 
 	is_reprocessing = test_bit(IS_ISCHAIN_REPROCESSING, &device->state);
+
+	if (IS_ENABLED(LME_PERFRAME_SWRESET)) {
+		if (CALL_HWIP_OPS(hw_ip, restore, instance))
+			mserr_hw("failed to per-frame reset", instance, hw_ip);
+	}
 
 	if (frame->type == SHOT_TYPE_INTERNAL) {
 		cmd_cur_input = param_set->dma.cur_input_cmd;
@@ -1423,6 +1428,9 @@ config:
 		hw_lme->config[instance].lme_in_h = param_set->dma.cur_input_height;
 
 		lme_hw_s_mvct(hw_ip->regs[REG_SETA], set_id);
+#ifdef  LME_PERFRAME_SWRESET
+		hw_lme->config[instance].first_frame = 1;
+#endif
 	}
 
 	ret = __is_hw_lme_set_size_regs(hw_ip, param_set, instance, set_id);

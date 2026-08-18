@@ -128,4 +128,7 @@
 
 #define USE_CAMERA_HEAP_FOR_ALL
 
+/* To apply SW W/A for LME HW_TIMEOUT */
+#define LME_PERFRAME_SWRESET   1
+
 #endif /* IS_VENDOR_CONFIG_RSW_V11_H */

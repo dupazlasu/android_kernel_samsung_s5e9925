@@ -71,13 +71,13 @@ int is_dvfs_init(struct is_resourcemgr *resourcemgr)
 
 	if (!(dvfs_ctrl->static_ctrl))
 		dvfs_ctrl->static_ctrl =
-			kzalloc(sizeof(struct is_dvfs_scenario_ctrl), GFP_KERNEL);
+			pablo_zalloc(sizeof(struct is_dvfs_scenario_ctrl), GFP_KERNEL);
 	if (!(dvfs_ctrl->dynamic_ctrl))
 		dvfs_ctrl->dynamic_ctrl =
-			kzalloc(sizeof(struct is_dvfs_scenario_ctrl), GFP_KERNEL);
+			pablo_zalloc(sizeof(struct is_dvfs_scenario_ctrl), GFP_KERNEL);
 	if (!(dvfs_ctrl->external_ctrl))
 		dvfs_ctrl->external_ctrl =
-			kzalloc(sizeof(struct is_dvfs_scenario_ctrl), GFP_KERNEL);
+			pablo_zalloc(sizeof(struct is_dvfs_scenario_ctrl), GFP_KERNEL);
 
 	if (!dvfs_ctrl->static_ctrl || !dvfs_ctrl->dynamic_ctrl || !dvfs_ctrl->external_ctrl) {
 		err("dvfs_ctrl alloc is failed!!\n");

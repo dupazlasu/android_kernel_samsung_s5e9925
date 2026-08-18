@@ -611,7 +611,7 @@ int sensor_imx576_cis_DPC_write(struct v4l2_subdev *subdev)
 	}
 #endif
 
-	cal_data = kzalloc(SENSOR_IMX576_DPC_CAL_SIZE, GFP_KERNEL);
+	cal_data = pablo_zalloc(SENSOR_IMX576_DPC_CAL_SIZE, GFP_KERNEL);
 	if (!cal_data) {
 		err("cis_imx576 cal_data alloc fail");
 		ret = -ENOMEM;
@@ -647,7 +647,7 @@ p_err:
 	I2C_MUTEX_UNLOCK(cis->i2c_lock);
 
 	if (cal_data)
-		kfree(cal_data);
+		pablo_free(cal_data);
 
 	return ret;
 }

@@ -78,7 +78,9 @@ static struct proc_dir_entry *mfc_proc_entry;
 void mfc_butler_worker(struct work_struct *work)
 {
 	struct mfc_dev *dev;
+	struct mfc_core *core;
 	struct mfc_ctx *ctx;
+	struct mfc_core_ctx *core_ctx;
 	int i;
 
 	dev = container_of(work, struct mfc_dev, butler_work);
@@ -92,10 +94,31 @@ void mfc_butler_worker(struct work_struct *work)
 			return;
 		}
 
-		if (!IS_MULTI_MODE(ctx))
+		core = mfc_get_main_core(dev, ctx);
+		if (!core) {
+			mfc_debug(2, "[RM] There is no main core\n");
 			return;
+		}
 
-		mfc_rm_request_work(dev, MFC_WORK_TRY, ctx);
+		core_ctx = core->core_ctx[ctx->num];
+		if (!core_ctx) {
+			mfc_debug(2, "[RM] There is no core_ctx\n");
+			return;
+		}
+
+		/*
+		 * There are two conditions under which MFC butler
+		 * is performed when multi-core mode.
+		 * 1. When operating as a mode2, it passes through
+		 * the MFC butler to make another core do the work.
+		 * 2. During DRC detection in multi-core mode, the subcore
+		 * can be deinitialized through MFC Butler.
+		 */
+		if (IS_NEED_BUTLER(ctx, core_ctx)) {
+			mfc_debug(3, "[2CORE] need to request work (op_mode: %d, state: %d)",
+					ctx->op_mode, core_ctx->state);
+			mfc_rm_request_work(dev, MFC_WORK_TRY, ctx);
+		}
 	} else {
 		mfc_rm_request_work(dev, MFC_WORK_BUTLER, NULL);
 	}
@@ -103,6 +126,7 @@ void mfc_butler_worker(struct work_struct *work)
 
 static void __mfc_deinit_dec_ctx(struct mfc_ctx *ctx)
 {
+	struct mfc_dev *dev = ctx->dev;
 	struct mfc_dec *dec = ctx->dec_priv;
 
 	mfc_cleanup_iovmm(ctx);
@@ -120,17 +144,10 @@ static void __mfc_deinit_dec_ctx(struct mfc_ctx *ctx)
 	mfc_mem_cleanup_user_shared_handle(ctx, &dec->sh_handle_hdr);
 	mfc_mem_cleanup_user_shared_handle(ctx, &dec->sh_handle_av1_film_grain);
 
-	if (dec->ref_info)
-		vfree(dec->ref_info);
-
-	if (dec->hdr10_plus_full)
-		vfree(dec->hdr10_plus_full);
-
-	if (dec->hdr10_plus_info)
-		vfree(dec->hdr10_plus_info);
-
-	if (dec->av1_film_grain_info)
-		vfree(dec->av1_film_grain_info);
+	mfc_mem_vmem_free(dev, (void *)&dec->ref_info, "ref_info");
+	mfc_mem_vmem_free(dev, &dec->hdr10_plus_full, "HDR10+");
+	mfc_mem_vmem_free(dev, (void *)&dec->hdr10_plus_info, "HDR10+info");
+	mfc_mem_vmem_free(dev, (void *)&dec->av1_film_grain_info, "filmgrain");
 
 	kfree(dec);
 }
@@ -204,10 +221,10 @@ static int __mfc_init_dec_ctx(struct mfc_ctx *ctx)
 	mfc_init_dpb_table(ctx);
 
 	dec->sh_handle_dpb.data_size = sizeof(struct dec_dpb_ref_info) * MFC_MAX_BUFFERS;
-	dec->ref_info = vmalloc(dec->sh_handle_dpb.data_size);
-	if (!dec->ref_info) {
+	ret = mfc_mem_vmem_alloc(ctx->dev, (void *)&dec->ref_info,
+				dec->sh_handle_dpb.data_size, "ref_info");
+	if (ret) {
 		mfc_ctx_err("failed to allocate decoder information data\n");
-		ret = -ENOMEM;
 		goto fail_dec_init;
 	}
 	for (i = 0; i < MFC_MAX_BUFFERS; i++)
@@ -512,11 +529,8 @@ static int mfc_open(struct file *file)
 
 	if (dev->num_inst == 1) {
 		/* regression test val */
-		if (dev->debugfs.regression_option) {
-			dev->regression_val = vmalloc(SZ_1M);
-			if (!dev->regression_val)
-				mfc_ctx_err("[MFCREGRESSION] failed to allocate regression result data\n");
-		}
+		if (dev->debugfs.regression_option)
+			mfc_mem_vmem_alloc(dev, (void *)&dev->regression_val, SZ_1M, "regression");
 
 		/* all of the ctx list */
 		INIT_LIST_HEAD(&dev->ctx_list);
@@ -588,7 +602,8 @@ err_drm_start:
 	call_cop(ctx, cleanup_ctx_ctrls, ctx);
 
 err_ctx_ctrls:
-	vfree(dev->regression_val);
+	if (dev->debugfs.regression_option)
+		mfc_mem_vmem_free(dev, (void *)&dev->regression_val, "regression");
 
 err_ctx_init:
 	if (mfc_is_decoder_node(node))
@@ -670,9 +685,8 @@ static int mfc_release(struct file *file)
 	if (ctx->type == MFCINST_ENCODER)
 		mfc_meminfo_cleanup_outbuf_q(ctx);
 
-	if (dev->num_inst == 0)
-		if (dev->regression_val)
-			vfree(dev->regression_val);
+	if ((dev->num_inst == 0) && dev->debugfs.regression_option)
+		mfc_mem_vmem_free(dev, (void *)&dev->regression_val, "regression");
 
 	if (ctx->type == MFCINST_DECODER) {
 		__mfc_deinit_dec_ctx(ctx);
@@ -1347,7 +1361,7 @@ static int mfc_suspend(struct device *device)
 {
 	struct mfc_dev *dev = platform_get_drvdata(to_platform_device(device));
 	struct mfc_core *core[MFC_NUM_CORE];
-	int i, ret;
+	int i, ret, success_hwlock_core_num = -1;
 
 	if (!dev) {
 		dev_err(device, "no mfc device to run\n");
@@ -1372,12 +1386,6 @@ static int mfc_suspend(struct device *device)
 	 * when there are no H/W operation both two core.
 	 */
 	for (i = 0; i < dev->num_core; i++) {
-		core[i] = dev->core[i];
-		if (!core[i]) {
-			dev_err(device, "no mfc core%d device to run\n", i);
-			return -EINVAL;
-		}
-
 		if (core[i]->num_inst == 0) {
 			core[i] = NULL;
 			continue;
@@ -1393,7 +1401,9 @@ static int mfc_suspend(struct device *device)
 					core[i]->hwlock.owned_by_irq,
 					core[i]->hwlock.wl_count,
 					core[i]->hwlock.transfer_owner);
-			return -EBUSY;
+			core[i] = NULL;
+			ret = -EBUSY;
+			goto err_hwlock;
 		}
 
 		if (!mfc_core_pm_get_pwr_ref_cnt(core[i])) {
@@ -1402,6 +1412,7 @@ static int mfc_suspend(struct device *device)
 			core[i] = NULL;
 			continue;
 		}
+		success_hwlock_core_num = i;
 	}
 
 	for (i = 0; i < dev->num_core; i++) {
@@ -1409,91 +1420,122 @@ static int mfc_suspend(struct device *device)
 			ret = mfc_core_run_sleep(core[i]);
 			if (ret) {
 				mfc_dev_err("Failed core_run_sleep for MFC%d\n", i);
-				return -EFAULT;
+				ret = -EFAULT;
+				goto err_hwlock;
 			}
 
 			if (core[i]->has_llc && core[i]->llc_on_status) {
 				mfc_llc_flush(core[i]);
 				mfc_llc_disable(core[i]);
 			}
+		}
+	}
 
+	for (i = 0; i < dev->num_core; i++) {
+		if (core[i]) {
 			mfc_core_release_hwlock_dev(core[i]);
-
 			mfc_dev_info("MFC%d suspend is completed\n", i);
 		}
 	}
 
 	return 0;
+
+err_hwlock:
+	for (i = 0; i <= success_hwlock_core_num; i++) {
+		if (!core[i])
+			continue;
+
+		mfc_core_release_hwlock_dev(core[i]);
+	}
+	return ret;
 }
 
 static int mfc_resume(struct device *device)
 {
 	struct mfc_dev *dev = platform_get_drvdata(to_platform_device(device));
-	struct mfc_core *core;
+	struct mfc_core *core[MFC_NUM_CORE];
 	struct mfc_core_ctx *core_ctx;
-	int i, ret;
+	int i, ret, success_hwlock_core_num = -1;
 
 	if (!dev) {
 		dev_err(device, "no mfc device to run\n");
 		return -EINVAL;
 	}
-	
 
 	for (i = 0; i < dev->num_core; i++) {
-		core = dev->core[i];
-		if (!core) {
+		core[i] = dev->core[i];
+		if (!core[i]) {
 			dev_err(device, "no mfc core%d device to run\n", i);
 			return -EINVAL;
 		}
 
-		if (core->state == MFCCORE_ERROR) {
-			mfc_core_info("[MSR] Couldn't wakeup. It's Error state\n");
+		if (core[i]->state == MFCCORE_ERROR) {
+			dev_err(device, "[MSR] mfc core%d couldn't wakeup. It's Error state\n", i);
 			return 0;
 		}
 	}
 
 	for (i = 0; i < dev->num_core; i++) {
-		core = dev->core[i];
-		if (!core) {
-			dev_err(device, "no mfc core%d device to run\n", i);
-			return -EINVAL;
-		}
-
-		if (core->num_inst == 0)
+		if (core[i]->num_inst == 0) {
+			core[i] = NULL;
 			continue;
+		}
 
 		mfc_dev_info("MFC%d will resume\n", i);
 
-		ret = mfc_core_get_hwlock_dev(core);
+		ret = mfc_core_get_hwlock_dev(core[i]);
 		if (ret < 0) {
 			mfc_dev_err("Failed to get hwlock for MFC%d\n", i);
 			mfc_dev_err("dev:0x%lx, bits:0x%lx, owned:%d, wl:%d, trans:%d\n",
-					core->hwlock.dev, core->hwlock.bits,
-					core->hwlock.owned_by_irq,
-					core->hwlock.wl_count,
-					core->hwlock.transfer_owner);
-			return -EBUSY;
+					core[i]->hwlock.dev, core[i]->hwlock.bits,
+					core[i]->hwlock.owned_by_irq,
+					core[i]->hwlock.wl_count,
+					core[i]->hwlock.transfer_owner);
+			core[i] = NULL;
+			ret = -EBUSY;
+			goto err_hwlock;
+		}
+		success_hwlock_core_num = i;
+	}
+
+	for (i = 0; i < dev->num_core; i++) {
+		if (!core[i])
+			continue;
+
+		if (core[i]->has_llc && (core[i]->llc_on_status == 0)) {
+			mfc_llc_enable(core[i]);
+
+			core_ctx = core[i]->core_ctx[core[i]->curr_core_ctx];
+			if (core_ctx)
+				mfc_llc_handle_resol(core[i], core_ctx->ctx);
 		}
 
-		if (core->has_llc && (core->llc_on_status == 0))
-			mfc_llc_enable(core);
-
-		core_ctx = core->core_ctx[core->curr_core_ctx];
-		if (core_ctx)
-			mfc_llc_handle_resol(core, core_ctx->ctx);
-
-		ret = mfc_core_run_wakeup(core);
+		ret = mfc_core_run_wakeup(core[i]);
 		if (ret) {
 			mfc_dev_err("Failed core_run_wakeup for MFC%d\n", i);
-			return -EFAULT;
+			ret = -EFAULT;
+			goto err_hwlock;
 		}
+	}
 
-		mfc_core_release_hwlock_dev(core);
+	for (i = 0; i < dev->num_core; i++) {
+		if (!core[i])
+			continue;
 
+		mfc_core_release_hwlock_dev(core[i]);
 		mfc_dev_info("MFC%d resume is completed\n", i);
 	}
 
 	return 0;
+
+err_hwlock:
+	for (i = 0; i <= success_hwlock_core_num; i++) {
+		if (!core[i])
+			continue;
+
+		mfc_core_release_hwlock_dev(core[i]);
+	}
+	return ret;
 }
 #endif
 

@@ -491,7 +491,7 @@ int sensor_3m5_cis_update_crop_region(struct v4l2_subdev *subdev)
 	is_sec_get_cal_buf(&cal_buf, rom_id);
 	is_sec_get_sysfs_finfo(&finfo, rom_id);
 
-	buf = vmalloc(MAX_EFS_DATA_LENGTH);
+	buf = pablo_malloc(MAX_EFS_DATA_LENGTH, GFP_KERNEL);
 	if (!buf) {
 		err("memory alloc failed.");
 		return 0;
@@ -507,7 +507,7 @@ int sensor_3m5_cis_update_crop_region(struct v4l2_subdev *subdev)
 	}
 
 	if (buf)
-		vfree(buf);
+		pablo_free(buf);
 
 	if (!test_bit(IS_EFS_STATE_READ, &efs_info.efs_state)) {
 		delta_x = *((s16 *)&cal_buf[finfo->rom_dualcal_slave1_cropshift_x_addr]);

@@ -113,7 +113,7 @@ struct exynos_drm_plane_state {
 	uint32_t colormap;
 	uint32_t split;
 	int64_t hdr_fd;
-	char *	hdr_ctx;
+	void *hdr_ctx;
 	bool hdr_en;
 };
 

@@ -69,7 +69,7 @@ static int parse_gate_info(struct exynos_platform_is *pdata, struct device_node 
 	struct exynos_is_clk_gate_info *gate_info;
 
 	/* get subip of is info */
-	gate_info = kzalloc(sizeof(struct exynos_is_clk_gate_info), GFP_KERNEL);
+	gate_info = pablo_zalloc(sizeof(struct exynos_is_clk_gate_info), GFP_KERNEL);
 	if (!gate_info) {
 		printk(KERN_ERR "%s: no memory for is gate_info\n", __func__);
 		return -EINVAL;
@@ -126,7 +126,7 @@ static int parse_gate_info(struct exynos_platform_is *pdata, struct device_node 
 
 	return 0;
 p_err:
-	kfree(gate_info);
+	pablo_free(gate_info);
 	return ret;
 }
 
@@ -278,7 +278,7 @@ static int bts_parse_data(struct device_node *np, struct is_bts_scen **data, int
 			goto err_of_property;
 		}
 
-		bts_scen = kcalloc(num_scen, sizeof(struct is_bts_scen), GFP_KERNEL);
+		bts_scen = pablo_calloc(num_scen, sizeof(struct is_bts_scen), GFP_KERNEL);
 		if (bts_scen == NULL) {
 			ret = -ENOMEM;
 			probe_err("no memory for bts_scen");
@@ -303,7 +303,7 @@ static int bts_parse_data(struct device_node *np, struct is_bts_scen **data, int
 	return 0;
 
 err_read_string:
-	kfree(bts_scen);
+	pablo_free(bts_scen);
 err_alloc:
 err_of_property:
 
@@ -394,7 +394,7 @@ static int parse_phy_ldos(struct device *dev, struct regulator ***ldos, int *num
 		return 0;
 	}
 
-	*ldos = kcalloc(*num, sizeof(struct regulator *), GFP_KERNEL);
+	*ldos = pablo_calloc(*num, sizeof(struct regulator *), GFP_KERNEL);
 	if (!(*ldos)) {
 		probe_err("failed to allocate memory for PHY regulators\n");
 		*num = 0;
@@ -424,7 +424,7 @@ err_get_regulator:
 err_read_name:
 	while (i-- > 0)
 		regulator_put((*ldos)[i]);
-	kfree(*ldos);
+	pablo_free(*ldos);
 	*num = 0;
 
 	return ret;
@@ -443,7 +443,7 @@ static int parse_itmon_port_name(struct device_node *np, struct is_resourcemgr *
 		goto err_of_property;
 	}
 
-	name = kcalloc(num, sizeof(char *), GFP_KERNEL);
+	name = pablo_calloc(num, sizeof(char *), GFP_KERNEL);
 	if (!name) {
 		ret = -ENOMEM;
 		probe_err("Out of memory for itmon_port_name");
@@ -462,7 +462,7 @@ static int parse_itmon_port_name(struct device_node *np, struct is_resourcemgr *
 	return 0;
 
 err_read_string:
-	kfree(*name);
+	pablo_free(*name);
 
 err_alloc:
 err_of_property:
@@ -518,7 +518,7 @@ int is_chain_dev_parse_dt(struct platform_device *pdev)
 		return -ENOMEM;
 	}
 
-	pdata = kzalloc(sizeof(struct exynos_platform_is), GFP_KERNEL);
+	pdata = pablo_zalloc(sizeof(struct exynos_platform_is), GFP_KERNEL);
 	if (!pdata) {
 		probe_err("no memory for platform data");
 		return -ENOMEM;
@@ -636,7 +636,7 @@ int is_chain_dev_parse_dt(struct platform_device *pdev)
 	return 0;
 
 p_err:
-	kfree(pdata);
+	pablo_free(pdata);
 	return ret;
 }
 
@@ -653,7 +653,7 @@ int is_sensor_dev_parse_dt(struct platform_device *pdev)
 	dev = &pdev->dev;
 	dnode = dev->of_node;
 
-	pdata = kzalloc(sizeof(struct exynos_platform_is_sensor), GFP_KERNEL);
+	pdata = pablo_zalloc(sizeof(struct exynos_platform_is_sensor), GFP_KERNEL);
 	if (!pdata) {
 		err("%s: no memory for platform data", __func__);
 		return -ENOMEM;
@@ -715,7 +715,7 @@ int is_sensor_dev_parse_dt(struct platform_device *pdev)
 err_read_csi_ch:
 err_read_scenario:
 err_read_id:
-	kfree(pdata);
+	pablo_free(pdata);
 
 	return ret;
 }
@@ -1169,7 +1169,7 @@ static int is_cis_modes_parse_dt(struct device_node *dnode,
 	}
 
 	pdata->cfgs = of_get_child_count(modes_np);
-	pdata->cfg = kcalloc(pdata->cfgs, sizeof(struct is_sensor_cfg), GFP_KERNEL);
+	pdata->cfg = pablo_calloc(pdata->cfgs, sizeof(struct is_sensor_cfg), GFP_KERNEL);
 	if (!pdata->cfg) {
 		err("out of memory for sensor modes.");
 		ret = -ENOMEM;
@@ -1276,16 +1276,16 @@ static int parse_power_seq_data(struct exynos_platform_is_module *pdata, struct 
 		SET_PIN_INIT(pdata, sensor_scenario, gpio_scenario);
 
 		num = of_get_child_count(sn_np);
-		node_table = kcalloc(num, sizeof(*node_table), GFP_KERNEL);
+		node_table = pablo_calloc(num, sizeof(*node_table), GFP_KERNEL);
 		if (!node_table) {
 			err("out of memory for node_table[%s].", sn_np->name);
 			return -ENOMEM;
 		}
 
-		node_num = kcalloc(num, sizeof(*node_num), GFP_KERNEL);
+		node_num = pablo_calloc(num, sizeof(*node_num), GFP_KERNEL);
 		if (!node_num) {
 			err("out of memory for node_num[%s].", sn_np->name);
-			kfree(node_table);
+			pablo_free(node_table);
 			return -ENOMEM;
 		}
 
@@ -1294,8 +1294,8 @@ static int parse_power_seq_data(struct exynos_platform_is_module *pdata, struct 
 			node_table[i] = seq_np;
 			ret = kstrtol(seq_np->name, 10, &node_num[i]);
 			if (ret) {
-				kfree(node_table);
-				kfree(node_num);
+				pablo_free(node_table);
+				pablo_free(node_num);
 				err("fail to kstrtol [%d]%s:%s.", i, sn_np->name, seq_np->name);
 				return ret;
 			}
@@ -1398,7 +1398,8 @@ static int parse_power_seq_data(struct exynos_platform_is_module *pdata, struct 
 				}
 
 				if (reg_cap) {
-					is_module_regulator = kzalloc(sizeof(struct is_module_regulator), GFP_KERNEL);
+					is_module_regulator =
+						pablo_zalloc(sizeof(struct is_module_regulator), GFP_KERNEL);
 					if (!is_module_regulator) {
 						err("%s: failed to alloc is_regulator", __func__);
 						return -ENOMEM;
@@ -1440,8 +1441,8 @@ static int parse_power_seq_data(struct exynos_platform_is_module *pdata, struct 
 				pin->shared_rsc_active);
 		}
 
-		kfree(node_table);
-		kfree(node_num);
+		pablo_free(node_table);
+		pablo_free(node_num);
 	}
 
 	return 0;
@@ -1509,7 +1510,7 @@ int is_sensor_module_parse_dt(struct device *dev,
 	FIMC_BUG(!dev->of_node);
 
 	dnode = dev->of_node;
-	pdata = kzalloc(sizeof(struct exynos_platform_is_module), GFP_KERNEL);
+	pdata = pablo_zalloc(sizeof(struct exynos_platform_is_module), GFP_KERNEL);
 	if (!pdata) {
 		probe_err("%s: no memory for platform data", __func__);
 		return -ENOMEM;
@@ -1579,7 +1580,7 @@ int is_sensor_module_parse_dt(struct device *dev,
 	return 0;
 
 p_err:
-	kfree(pdata);
+	pablo_free(pdata);
 	return ret;
 }
 

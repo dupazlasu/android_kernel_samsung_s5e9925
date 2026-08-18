@@ -1420,8 +1420,8 @@ static int abox_dma_dump_register_event_notifier(struct abox_dma_data *data)
 		return 0;
 
 	w = data->of_data->get_src_widget(data);
-	if (w < 0)
-		return w;
+	if (w < 0 || w >= ABOX_WIDGET_COUNT)
+		return -EINVAL;
 
 	abox_cmpnt_register_event_notifier(abox_data, w,
 			abox_dma_dump_file_notify, data);
@@ -1440,8 +1440,8 @@ static int abox_dma_dump_unregister_event_notifier(struct abox_dma_data *data)
 		return 0;
 
 	w = data->of_data->get_src_widget(data);
-	if (w < 0)
-		return w;
+	if (w < 0 || w >= ABOX_WIDGET_COUNT)
+		return -EINVAL;
 
 	abox_cmpnt_unregister_event_notifier(abox_data, w);
 

@@ -200,18 +200,18 @@ static int __init flash_gpio_probe(struct device *dev, struct i2c_client *client
 
 	device = &core->sensor[sensor_id];
 
-	flash = kzalloc(sizeof(struct is_flash), GFP_KERNEL);
+	flash = pablo_zalloc(sizeof(struct is_flash), GFP_KERNEL);
 	if (!flash) {
 		err("flash is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	subdev_flash = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_flash = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_flash) {
 		err("subdev_flash is NULL");
 		ret = -ENOMEM;
-		kfree(flash);
+		pablo_free(flash);
 		goto p_err;
 	}
 
@@ -222,16 +222,16 @@ static int __init flash_gpio_probe(struct device *dev, struct i2c_client *client
 	flash->flash_gpio = of_get_named_gpio(dnode, "flash-gpio", 0);
 	if (!gpio_is_valid(flash->flash_gpio)) {
 		dev_err(dev, "failed to get PIN_RESET\n");
-		kfree(flash);
-		kfree(subdev_flash);
+		pablo_free(flash);
+		pablo_free(subdev_flash);
 		return -EINVAL;
 	}
 
 	flash->torch_gpio = of_get_named_gpio(dnode, "torch-gpio", 0);
 	if (!gpio_is_valid(flash->torch_gpio)) {
 		dev_err(dev, "failed to get PIN_RESET\n");
-		kfree(flash);
-		kfree(subdev_flash);
+		pablo_free(flash);
+		pablo_free(subdev_flash);
 		return -EINVAL;
 	}
 

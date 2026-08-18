@@ -451,7 +451,7 @@ static int __init flash_probe(struct device *dev, struct i2c_client *client)
 		goto p_err;
 	}
 
-	subdev_flash = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_flash = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_flash) {
 		err("subdev_flash is NULL");
 		ret = -ENOMEM;

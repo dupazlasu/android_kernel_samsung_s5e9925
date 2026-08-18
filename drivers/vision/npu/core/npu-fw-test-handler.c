@@ -67,7 +67,11 @@ __attribute__((unused)) static int load_fw_utc_vector(struct npu_session *sess, 
 	};
 	struct npu_memory_buffer	*test_buf;
 
-	BUG_ON(!ft_handle);
+	if (unlikely(!ft_handle)) {
+		npu_err("Failed to get npu_fw_test_handler\n");
+		return -EINVAL;
+	}
+
 	BUG_ON(!sess);
 	dev = get_dev_from_session(sess);
 
@@ -254,6 +258,14 @@ int npu_fw_test_initialize(struct npu_system *system)
 npu_s_param_ret fw_test_s_param_handler(struct npu_session *sess, struct vs4l_param *param, int *retval)
 {
 	int		ret;
+#ifdef CONFIG_NPU_USE_BOOT_IOCTL
+	struct npu_vertex_ctx *vctx = &sess->vctx;
+
+	if (!(vctx->state & BIT(NPU_VERTEX_POWER))) {
+		npu_ierr("invalid state(%X)\n", vctx, vctx->state);
+		return -EPERM;
+	}
+#endif
 
 	BUG_ON(!sess);
 	BUG_ON(!param);

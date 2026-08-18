@@ -2162,6 +2162,7 @@ static void default_options(struct f2fs_sb_info *sbi, bool remount)
 	f2fs_build_fault_attr(sbi, 0, 0);
 
 	f2fs_set_lookup_mode(sbi, LOOKUP_PERF);
+
 	if (sbi->raw_super->mount_opts[0]) {
 		struct super_block *sb = sbi->sb;
 		int err;

@@ -3965,53 +3965,53 @@ static int ois_mcu_probe(struct platform_device *pdev)
 		info_mcu("off_during_uwonly_mode not use");
 	}
 
-	mcu = devm_kzalloc(&pdev->dev, sizeof(struct ois_mcu_dev), GFP_KERNEL);
+	mcu = pablo_zalloc(sizeof(struct ois_mcu_dev), GFP_KERNEL);
 	if (!mcu)
 		return -ENOMEM;
 
-	is_mcu = devm_kzalloc(&pdev->dev, sizeof(struct is_mcu) * sensor_id_len, GFP_KERNEL);
+	is_mcu = pablo_zalloc(sizeof(struct is_mcu) * sensor_id_len, GFP_KERNEL);
 	if (!mcu) {
 		err("fimc_is_mcu is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	subdev_mcu = devm_kzalloc(&pdev->dev, sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
+	subdev_mcu = pablo_zalloc(sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
 	if (!subdev_mcu) {
 		err("subdev_mcu is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	ois = devm_kzalloc(&pdev->dev, sizeof(struct is_ois) * sensor_id_len, GFP_KERNEL);
+	ois = pablo_zalloc(sizeof(struct is_ois) * sensor_id_len, GFP_KERNEL);
 	if (!ois) {
 		err("fimc_is_ois is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	subdev_ois = devm_kzalloc(&pdev->dev, sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
+	subdev_ois = pablo_zalloc(sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
 	if (!subdev_ois) {
 		err("subdev_ois is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	ois_device = devm_kzalloc(&pdev->dev, sizeof(struct is_device_ois), GFP_KERNEL);
+	ois_device = pablo_zalloc(sizeof(struct is_device_ois), GFP_KERNEL);
 	if (!ois_device) {
 		err("fimc_is_device_ois is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	actuator = devm_kzalloc(&pdev->dev, sizeof(struct is_actuator), GFP_KERNEL);
+	actuator = pablo_zalloc(sizeof(struct is_actuator), GFP_KERNEL);
 	if (!actuator) {
 		err("actuator is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	subdev_actuator = devm_kzalloc(&pdev->dev, sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_actuator = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_actuator) {
 		err("subdev_actuator is NULL");
 		ret = -ENOMEM;
@@ -4208,28 +4208,28 @@ err_ioremap:
 	devm_release_mem_region(mcu->dev, res->start, resource_size(res));
 p_err:
 	if (mcu)
-		kfree(mcu);
+		pablo_free(mcu);
 
 	if (is_mcu)
-		kfree(is_mcu);
+		pablo_free(is_mcu);
 
 	if (subdev_mcu)
-		kfree(subdev_mcu);
+		pablo_free(subdev_mcu);
 
 	if (ois)
-		kfree(ois);
+		pablo_free(ois);
 
 	if (subdev_ois)
-		kfree(subdev_ois);
+		pablo_free(subdev_ois);
 
 	if (ois_device)
-		kfree(ois_device);
+		pablo_free(ois_device);
 
 	if (actuator)
-		kfree(actuator);
+		pablo_free(actuator);
 
 	if (subdev_actuator)
-		kfree(subdev_actuator);
+		pablo_free(subdev_actuator);
 
 	return ret;
 }

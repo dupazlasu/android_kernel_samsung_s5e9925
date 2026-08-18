@@ -2650,12 +2650,12 @@ static int is_csi_get_phy_setfile_from_fw(struct is_device_csi *csi,
 	}
 
 	if (phy_sf_tbl->sz_comm) {
-		kfree(phy_sf_tbl->sf_comm);
+		pablo_free(phy_sf_tbl->sf_comm);
 		phy_sf_tbl->sz_comm = 0;
 	}
 
 	if (phy_sf_tbl->sz_lane) {
-		kfree(phy_sf_tbl->sf_lane);
+		pablo_free(phy_sf_tbl->sf_lane);
 		phy_sf_tbl->sz_lane = 0;
 	}
 
@@ -2687,11 +2687,11 @@ static int is_csi_get_phy_setfile_from_fw(struct is_device_csi *csi,
 		}
 
 		for (j = 0; j < PPS_MAX; j++) {
-			sf[j] = kcalloc(size[j], sizeof(struct phy_setfile),
+			sf[j] = pablo_calloc(size[j], sizeof(struct phy_setfile),
 					GFP_KERNEL);
 			if (!sf[j]) {
 				while (j--)
-					kfree(sf[j]);
+					pablo_free(sf[j]);
 
 				ret = -ENOMEM;
 				goto out;
@@ -3559,7 +3559,7 @@ static int is_csi_get_phy_setfile_from_dt(struct phy_setfile_table *phy_sf_tbl,
 		}
 
 		sz[i_child] = i_prop - 1;
-		sf[i_child] = kcalloc(i_prop, size, GFP_KERNEL);
+		sf[i_child] = pablo_calloc(i_prop, size, GFP_KERNEL);
 		if (!sf[i_child]) {
 			ret = -ENOMEM;
 			goto out;
@@ -3606,7 +3606,7 @@ static int is_csi_get_phy_setfile_from_dt(struct phy_setfile_table *phy_sf_tbl,
 
 out:
 	while (i_child--)
-		kfree(sf[i_child]);
+		pablo_free(sf[i_child]);
 
 	of_node_put(sf_node);
 

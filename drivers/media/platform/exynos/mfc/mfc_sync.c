@@ -530,6 +530,21 @@ static int __mfc_ctx_ready_set_bit(struct mfc_core_ctx *core_ctx,
 
 int mfc_ctx_ready_set_bit(struct mfc_core_ctx *core_ctx, struct mfc_bits *data)
 {
+	if (!core_ctx) {
+		mfc_pr_err("no mfc core_ctx device to run\n");
+		return 0;
+	}
+
+	if (!core_ctx->core) {
+		mfc_pr_err("no mfc core device to run\n");
+		return 0;
+	}
+
+	if (!core_ctx->ctx) {
+		mfc_err("no mfc ctx device to run\n");
+		return 0;
+	}
+
 	return __mfc_ctx_ready_set_bit(core_ctx, data, true);
 }
 

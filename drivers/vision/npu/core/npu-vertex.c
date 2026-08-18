@@ -177,6 +177,14 @@ static int npu_vertex_s_graph(struct file *file, struct vs4l_graph *sinfo)
 		goto p_err;
 	}
 
+#ifdef CONFIG_NPU_USE_BOOT_IOCTL
+	if (!(vctx->state & BIT(NPU_VERTEX_POWER))) {
+		npu_ierr("invalid state(%X)\n", vctx, vctx->state);
+		ret = -EINVAL;
+		goto p_err;
+	}
+#endif
+
 	ret = npu_session_s_graph(session, sinfo);
 	if (ret) {
 		npu_err("fail(%d) in npu_session_config\n", ret);
@@ -1362,6 +1370,11 @@ static int __npu_vertex_bootup(struct file *file, struct vs4l_ctrl *ctrl)
 
 	info = npu_scheduler_get_info();
 
+	if (ctrl->value != NPU_HWDEV_ID_NPU && ctrl->value != NPU_HWDEV_ID_DSP) {
+		npu_ierr("invalid hw device id\n", vctx);
+		return -EINVAL;
+	}
+
 	session->hids = ctrl->value;
 
 	/* check npu_device emergency error */
@@ -1405,6 +1418,12 @@ static int __npu_vertex_bootup(struct file *file, struct vs4l_ctrl *ctrl)
 	{
 		struct npu_hw_device *hdev =
 				npu_get_hdev_by_id(session->hids);
+		if (!hdev) {
+			npu_ierr("fail in npu_get_hdev_by_id\n", vctx);
+			__vref_put(&vertex->boot_cnt);
+			ret = -EINVAL;
+			goto p_err;
+		}
 		if (atomic_read(&hdev->boot_cnt.refcount) == 1) {
 			ret = npu_stm_enable(&device->system, session->hids);
 			if (ret)

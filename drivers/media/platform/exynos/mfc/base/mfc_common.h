@@ -280,6 +280,8 @@
 	((t == MFC_TRANSFER_SMPTE_170M) || (t == MFC_TRANSFER_ST2084) || (t == MFC_TRANSFER_HLG)))
 
 #define IS_NO_INFOLOG(ctx)		((ctx)->dec_priv && (ctx)->dec_priv->is_multiframe)
+#define IS_NEED_BUTLER(ctx, core_ctx) (IS_TWO_MODE2(ctx) && (core_ctx->state == MFCINST_RUNNING)) || \
+				(!IS_SINGLE_MODE(ctx) && ON_RES_CHANGE(core_ctx))
 
 /* Extra information for Decoder */
 #define	DEC_SET_DUAL_DPB		(1 << 0)

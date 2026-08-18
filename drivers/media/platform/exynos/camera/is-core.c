@@ -1310,7 +1310,7 @@ static int is_probe(struct platform_device *pdev)
 	probe_info("%s:start(%ld, %ld)\n", __func__,
 		sizeof(struct is_core), sizeof(struct is_video_ctx));
 
-	core = kzalloc(sizeof(struct is_core), GFP_KERNEL);
+	core = pablo_zalloc(sizeof(struct is_core), GFP_KERNEL);
 	if (!core) {
 		probe_err("core is NULL");
 		return -ENOMEM;
@@ -1590,7 +1590,7 @@ static int is_probe(struct platform_device *pdev)
 p_err3:
 	iounmap(core->regs);
 p_err1:
-	kfree(core);
+	pablo_free(core);
 	return ret;
 }
 

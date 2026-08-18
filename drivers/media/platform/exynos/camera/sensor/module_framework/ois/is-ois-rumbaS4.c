@@ -558,7 +558,7 @@ static int sensor_ois_rumbaS4_probe(struct i2c_client *client,
 	}
 	ois->ois_ops = &ois_ops;
 
-	subdev_ois = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_ois = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_ois) {
 		err("subdev_ois is NULL");
 		ret = -ENOMEM;
@@ -566,7 +566,7 @@ static int sensor_ois_rumbaS4_probe(struct i2c_client *client,
 	}
 	sensor_peri->subdev_ois = subdev_ois;
 
-	ois_device = kzalloc(sizeof(struct is_device_ois), GFP_KERNEL);
+	ois_device = pablo_zalloc(sizeof(struct is_device_ois), GFP_KERNEL);
 	if (!ois_device) {
 		err("is_device_ois is NULL");
 		return -ENOMEM;

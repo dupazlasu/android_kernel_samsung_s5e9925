@@ -1135,7 +1135,7 @@ int sensor_cis_probe(struct i2c_client *client, const struct i2c_device_id *id,
 	device = &core->sensor[sensor_dev_id];
 
 	cis = &sp->cis;
-	subdev_cis = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_cis = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_cis) {
 		probe_err("subdev_cis is NULL");
 		return -ENOMEM;
@@ -1147,7 +1147,7 @@ int sensor_cis_probe(struct i2c_client *client, const struct i2c_device_id *id,
 	cis->i2c_lock = NULL;
 	cis->mipi_clock_index_cur = CAM_MIPI_NOT_INITIALIZED;
 	cis->mipi_clock_index_new = CAM_MIPI_NOT_INITIALIZED;
-	cis->cis_data = kzalloc(sizeof(cis_shared_data), GFP_KERNEL);
+	cis->cis_data = pablo_zalloc(sizeof(cis_shared_data), GFP_KERNEL);
 	if (!cis->cis_data) {
 		err("cis_data is NULL");
 		ret = -ENOMEM;
@@ -1169,7 +1169,7 @@ int sensor_cis_probe(struct i2c_client *client, const struct i2c_device_id *id,
 	return 0;
 
 err_alloc_cis_data:
-	kfree(subdev_cis);
+	pablo_free(subdev_cis);
 
 	return ret;
 }

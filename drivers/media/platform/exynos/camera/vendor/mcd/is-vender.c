@@ -689,8 +689,7 @@ int is_vender_probe(struct is_vender *vender)
 	snprintf(vender->fw_path, sizeof(vender->fw_path), "%s", IS_FW_SDCARD);
 	snprintf(vender->request_fw_path, sizeof(vender->request_fw_path), "%s", IS_FW);
 
-	specific = devm_kzalloc(&core->pdev->dev,
-			sizeof(struct is_vender_specific), GFP_KERNEL);
+	specific = pablo_zalloc(sizeof(struct is_vender_specific), GFP_KERNEL);
 	if (!specific) {
 		probe_err("failed to allocate vender specific");
 		return -ENOMEM;
@@ -784,10 +783,12 @@ int is_vender_driver_init(void)
 int is_vender_driver_exit(void)
 {
 	int ret = 0;
+	struct is_vender *vender = &is_get_is_core()->vender;
 
 #ifdef CONFIG_CAMERA_USE_INTERNAL_MCU
 	platform_driver_unregister(&sensor_ois_mcu_platform_driver);
 #endif
+	pablo_free(vender->private_data);
 	misc_deregister(&is_vender_caminfo_driver);
 
 	return ret;

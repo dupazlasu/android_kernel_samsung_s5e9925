@@ -262,7 +262,7 @@ static unsigned long pablo_vmap(unsigned long addr, unsigned int size)
 	struct page **pages;
 	void *vaddr;
 
-	pages = kmalloc_array(npages, sizeof(struct page *), GFP_ATOMIC);
+	pages = pablo_malloc_array(npages, sizeof(struct page *), GFP_ATOMIC);
 	if (!pages)
 		return -ENOMEM;
 
@@ -272,7 +272,7 @@ static unsigned long pablo_vmap(unsigned long addr, unsigned int size)
 	}
 
 	vaddr = vmap(pages, npages, VM_MAP, prot);
-	kfree(pages);
+	pablo_free(pages);
 
 	return (unsigned long)vaddr;
 }
@@ -324,7 +324,7 @@ static int pablo_rscmgr_init_bin_rmem(struct is_resourcemgr *rscmgr, struct rese
 
 	npages = pablo_bin_vm.size >> PAGE_SHIFT;
 	page = phys_to_page(pablo_bin_vm.phys_addr);
-	pages = kmalloc_array(npages, sizeof(struct page *), GFP_KERNEL);
+	pages = pablo_malloc_array(npages, sizeof(struct page *), GFP_KERNEL);
 	if (!pages) {
 		probe_err("failed to alloc pages: %d", npages);
 		return -ENOMEM;
@@ -340,7 +340,7 @@ static int pablo_rscmgr_init_bin_rmem(struct is_resourcemgr *rscmgr, struct rese
 	if (map_vm_area(&pablo_bin_vm, prot, pages)) {
 #endif
 		probe_err("failed to map rmem for binary");
-		kfree(pages);
+		pablo_free(pages);
 		return -ENOMEM;
 	}
 
@@ -348,7 +348,7 @@ static int pablo_rscmgr_init_bin_rmem(struct is_resourcemgr *rscmgr, struct rese
 					pablo_bin_vm.addr,
 					&rmem->base, &rmem->size);
 
-	kfree(pages);
+	pablo_free(pages);
 
 	return 0;
 }
@@ -396,7 +396,7 @@ static int pablo_alloc_n_map(struct is_mem *mem, struct vm_struct *vm, pgprot_t 
 	struct page **pages;
 	struct page **tpages;
 
-	pages = vmalloc(sizeof(struct page *) * npages);
+	pages = pablo_malloc(sizeof(struct page *) * npages, GFP_KERNEL);
 	if (!pages) {
 		probe_err("failed to alloc pages: %d", npages);
 		return -ENOMEM;
@@ -408,7 +408,7 @@ static int pablo_alloc_n_map(struct is_mem *mem, struct vm_struct *vm, pgprot_t 
 	if (IS_ERR_OR_NULL(pb)) {
 		probe_err("failed to alloc buffer - addr: 0x%pK, size: 0x%lx",
 							vm->addr, vm->size);
-		vfree(pages);
+		pablo_free(pages);
 		return -ENOMEM;
 	}
 
@@ -419,7 +419,7 @@ static int pablo_alloc_n_map(struct is_mem *mem, struct vm_struct *vm, pgprot_t 
 		if (i >= npages) {
 			probe_err("failed to setup pages: %d", npages);
 			CALL_VOID_BUFOP(pb, free, pb);
-			vfree(pages);
+			pablo_free(pages);
 			return -EINVAL;
 		}
 
@@ -436,12 +436,12 @@ static int pablo_alloc_n_map(struct is_mem *mem, struct vm_struct *vm, pgprot_t 
 		probe_err("failed to map buffer - addr: 0x%pK, size: 0x%lx",
 							vm->addr, vm->size);
 		CALL_VOID_BUFOP(pb, free, pb);
-		vfree(pages);
+		pablo_free(pages);
 		return -ENOMEM;
 	}
 
 	probe_info("[RSC]alloc & map(V/S): 0x%pK/0x%lx\n", vm->addr, vm->size);
-	vfree(pages);
+	pablo_free(pages);
 
 	return 0;
 }
@@ -1558,10 +1558,10 @@ int is_resourcemgr_probe(struct is_resourcemgr *resourcemgr,
 
 #ifdef ENABLE_KERNEL_LOG_DUMP
 #if IS_ENABLED(CONFIG_EXYNOS_SNAPSHOT)
-	resourcemgr->kernel_log_buf = kzalloc(exynos_ss_get_item_size("log_kernel"),
+	resourcemgr->kernel_log_buf = pablo_zalloc(exynos_ss_get_item_size("log_kernel"),
 						GFP_KERNEL);
 #elif IS_ENABLED(CONFIG_DEBUG_SNAPSHOT)
-	resourcemgr->kernel_log_buf = kzalloc(dbg_snapshot_get_item_size("log_kernel"),
+	resourcemgr->kernel_log_buf = pablo_zalloc(dbg_snapshot_get_item_size("log_kernel"),
 						GFP_KERNEL);
 #endif
 #endif
@@ -2390,14 +2390,14 @@ struct is_dbuf_q *is_init_dbuf_q(void)
 	int num_list = MAX_DBUF_LIST;
 	struct is_dbuf_q *dbuf_q;
 
-	dbuf_q = vzalloc(sizeof(struct is_dbuf_q));
+	dbuf_q = pablo_zalloc(sizeof(struct is_dbuf_q), GFP_KERNEL);
 	if (!dbuf_q) {
 		err("failed to allocate dbuf_q");
 		return ERR_PTR(-ENOMEM);
 	}
 
 	for (i_id = 0; i_id < ID_DBUF_MAX; i_id++) {
-		dbuf_q->dbuf_list[i_id] = vzalloc(sizeof(struct is_dbuf_list) * num_list);
+		dbuf_q->dbuf_list[i_id] = pablo_zalloc(sizeof(struct is_dbuf_list) * num_list, GFP_KERNEL);
 		if (!dbuf_q->dbuf_list[i_id]) {
 			err("failed to allocate dbuf_list");
 			ret = ERR_PTR(-ENOMEM);
@@ -2427,10 +2427,10 @@ struct is_dbuf_q *is_init_dbuf_q(void)
 err_alloc_list:
 	while (i_id-- > 0) {
 		if (dbuf_q->dbuf_list[i_id])
-			vfree(dbuf_q->dbuf_list[i_id]);
+			pablo_free(dbuf_q->dbuf_list[i_id]);
 	}
 
-	vfree(dbuf_q);
+	pablo_free(dbuf_q);
 
 	return ret;
 }
@@ -2441,9 +2441,9 @@ void is_deinit_dbuf_q(struct is_dbuf_q *dbuf_q)
 	int i_id;
 
 	for (i_id = 0; i_id < ID_DBUF_MAX; i_id++)
-		vfree(dbuf_q->dbuf_list[i_id]);
+		pablo_free(dbuf_q->dbuf_list[i_id]);
 
-	vfree(dbuf_q);
+	pablo_free(dbuf_q);
 }
 
 static void is_flush_dma_buf(struct is_dbuf_q *dbuf_q, u32 dma_id, u32 qcnt)

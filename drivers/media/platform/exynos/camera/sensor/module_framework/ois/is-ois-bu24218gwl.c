@@ -133,7 +133,7 @@ int is_ois_cal_open(struct is_ois *ois, char *name, int offset, int size)
 		goto p_err;
 	}
 
-	buf = vmalloc(size);
+	buf = pablo_malloc(size, GFP_KERNEL);
 	if (!buf) {
 		err("failed to allocate memory");
 		ret = -ENOMEM;
@@ -163,7 +163,7 @@ int is_ois_cal_open(struct is_ois *ois, char *name, int offset, int size)
 
 p_err:
 	if (buf)
-		vfree(buf);
+		pablo_free(buf);
 
 	if (!IS_ERR_OR_NULL(fp))
 		filp_close(fp, NULL);
@@ -689,7 +689,7 @@ static int sensor_ois_bu24218gwl_probe(struct i2c_client *client,
 		return -EPROBE_DEFER;
 	}
 
-	ois = kzalloc(sizeof(struct is_ois), GFP_KERNEL);
+	ois = pablo_zalloc(sizeof(struct is_ois), GFP_KERNEL);
 	if (!ois) {
 		err("ois is NULL");
 		ret = -ENOMEM;
@@ -700,7 +700,7 @@ static int sensor_ois_bu24218gwl_probe(struct i2c_client *client,
 
 	ois->ois_ops = &ois_ops;
 
-	subdev_ois = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_ois = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_ois) {
 		err("subdev_ois is NULL");
 		ret = -ENOMEM;

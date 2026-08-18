@@ -101,7 +101,6 @@ static int hdr_import_buffer(struct exynos_hdr *hdr,
 	struct dma_buf *buf = NULL;
 	void *vaddr = NULL;
 	int64_t hdr_fd;
-	int i;
 
 	hdr_debug(hdr, "+\n");
 
@@ -132,9 +131,12 @@ static int hdr_import_buffer(struct exynos_hdr *hdr,
 
 	// release old buf
 	if (hdr->dma_buf) {
-		if (hdr->dma_vbuf)
+		if (hdr->dma_vbuf) {
 			dma_buf_vunmap(hdr->dma_buf, hdr->dma_vbuf);
+			hdr->dma_vbuf = NULL;
+		}
 		dma_buf_put(hdr->dma_buf);
+		hdr->dma_buf = NULL;
 	}
 
 	vaddr = dma_buf_vmap(buf);
@@ -146,12 +148,8 @@ static int hdr_import_buffer(struct exynos_hdr *hdr,
 	hdr->hdr_fd = hdr_fd;
 	hdr->dma_buf = buf;
 	hdr->dma_vbuf = vaddr;
-	for (i = 0; i < MAX_HDR_CONTEXT; i++) {
-		if (!hdr->ctx[i].data)
-			hdr->ctx[i].data = kzalloc(buf->size, GFP_KERNEL);
-	}
 done:
-	return 0;
+	return hdr->dma_buf->size;
 
 error:
 	if (!IS_ERR_OR_NULL(buf)) {
@@ -162,19 +160,31 @@ error:
 	return -1;
 }
 
-static struct hdr_context *hdr_acquire_context(struct exynos_hdr *hdr)
+static void *hdr_acquire_context(struct exynos_hdr *hdr, int size)
 {
-	int ctx_no = (atomic_inc_return(&hdr->ctx_no) & INT_MAX) % MAX_HDR_CONTEXT;
+	int i, ctx_no;
 
-	return &hdr->ctx[ctx_no];
+	if (hdr->ctx_size != size) {
+		for (i = 0; i < MAX_HDR_CONTEXT; i++) {
+			if (hdr->ctx[i])
+				kfree(hdr->ctx[i]);
+			hdr->ctx[i] = kzalloc(size, GFP_KERNEL | __GFP_NOWARN);
+		}
+		hdr_info(hdr, "ctx realloc %d -> %d\n", hdr->ctx_size, size);
+		hdr->ctx_size = size;
+	}
+
+	ctx_no = (atomic_inc_return(&hdr->ctx_no) & INT_MAX) % MAX_HDR_CONTEXT;
+	return hdr->ctx[ctx_no];
 }
 
 static int hdr_prepare_context(struct exynos_hdr *hdr,
 			struct exynos_drm_plane_state *exynos_plane_state)
 {
 	const struct hdr_coef_header *coef_h;
-	struct hdr_context *ctx;
+	void *ctx;
 	int ret;
+	unsigned int total_bytesize;
 
 	ret = hdr_import_buffer(hdr, exynos_plane_state);
 	if (ret < 0)
@@ -186,19 +196,22 @@ static int hdr_prepare_context(struct exynos_hdr *hdr,
 		return -1;
 	}
 
-	if (!coef_h->total_bytesize || (coef_h->total_bytesize < sizeof(*coef_h))) {
-		hdr_err(hdr, "invalid size: total %d\n", coef_h->total_bytesize);
+	total_bytesize = coef_h->total_bytesize;
+	if (!total_bytesize
+		|| (total_bytesize < sizeof(*coef_h))
+		|| (total_bytesize > ret)) {
+		hdr_err(hdr, "invalid size: total %d/%d\n", total_bytesize, ret);
 		return -1;
 	}
 
-	ctx = hdr_acquire_context(hdr);
-	if (!ctx || !ctx->data) {
+	ctx = hdr_acquire_context(hdr, ret);
+	if (!ctx) {
 		hdr_err(hdr, "no valid ctx\n");
 		return -1;
 	}
 
-	memcpy(ctx->data, (void *)hdr->dma_vbuf, coef_h->total_bytesize);
-	exynos_plane_state->hdr_ctx = ctx->data;
+	memcpy(ctx, (void *)hdr->dma_vbuf, total_bytesize);
+	exynos_plane_state->hdr_ctx = ctx;
 
 	return 0;
 }

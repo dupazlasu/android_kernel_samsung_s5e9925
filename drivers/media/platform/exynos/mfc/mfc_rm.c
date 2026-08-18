@@ -401,6 +401,8 @@ static struct mfc_core *__mfc_rm_switch_to_single_mode(struct mfc_ctx *ctx, int 
 		switch_single_core = 0;
 	else if (op_core_type == MFC_OP_CORE_FIXED_0)
 		switch_single_core = 1;
+	else if (ctx->cmd_counter == 0)
+		switch_single_core = ctx->last_op_core;
 	else
 		switch_single_core = __mfc_rm_get_core_num_by_load(dev, ctx, MFC_SURPLUS_CORE);
 	mfc_debug(2, "[RM] switch to single to core: %d\n", switch_single_core);
@@ -984,6 +986,9 @@ static int __mfc_rm_switch_to_multi_mode(struct mfc_ctx *ctx)
 	mfc_change_op_mode(ctx, ctx->stream_op_mode);
 	mfc_debug(2, "[RM][2CORE] reset multi core op_mode: %d\n", ctx->op_mode);
 
+	/* for check whether command is sent during switch to multi */
+	ctx->cmd_counter = 0;
+
 	mutex_unlock(&ctx->op_mode_mutex);
 
 	mfc_core_release_hwlock_dev(maincore);
@@ -1359,9 +1364,8 @@ int mfc_rm_instance_init(struct mfc_dev *dev, struct mfc_ctx *ctx)
 		num_qos_steps = core->core_pdata->num_encoder_qos_steps;
 	else
 		num_qos_steps = core->core_pdata->num_default_qos_steps;
-	ctx->mfc_qos_portion = vmalloc(sizeof(unsigned int) * num_qos_steps);
-	if (!ctx->mfc_qos_portion)
-		mfc_ctx_err("failed to allocate qos portion data\n");
+	mfc_mem_vmem_alloc(core->dev, (void *)&ctx->mfc_qos_portion,
+		sizeof(unsigned int) * num_qos_steps, "qos_portion");
 
 err_inst_init:
 	mfc_release_corelock_ctx(ctx);
@@ -1422,7 +1426,7 @@ int mfc_rm_instance_deinit(struct mfc_dev *dev, struct mfc_ctx *ctx)
 err_inst_deinit:
 	if (core)
 		mfc_core_qos_get_portion(core, ctx);
-	vfree(ctx->mfc_qos_portion);
+	mfc_mem_vmem_free(dev, (void *)&ctx->mfc_qos_portion, "qos_portion");
 	mfc_release_corelock_ctx(ctx);
 
 	mfc_debug_leave();
@@ -1713,7 +1717,6 @@ int mfc_rm_instance_setup(struct mfc_dev *dev, struct mfc_ctx *ctx)
 	if (ctx->dec_priv->consumed) {
 		mfc_debug(2, "[STREAM][2CORE] src should be without consumed\n");
 		ctx->dec_priv->consumed = 0;
-		ctx->dec_priv->remained_size = 0;
 	}
 
 	if (mfc_ctx_ready_set_bit(core_ctx, &core->work_bits))
@@ -1857,12 +1860,17 @@ void mfc_rm_request_work(struct mfc_dev *dev, enum mfc_request_work work,
 		MFC_TRACE_RM("[c:%d] mode was changed op_mode: %d\n", ctx->num, ctx->op_mode);
 		mutex_unlock(&ctx->op_mode_mutex);
 		goto err_req_work;
-	} else {
-		/* move src buffer to src_buf_queue from src_buf_ready_queue */
-		core_ctx = core->core_ctx[ctx->num];
-		mfc_move_buf_all(ctx, &core_ctx->src_buf_queue,
-				&ctx->src_buf_ready_queue, MFC_QUEUE_ADD_BOTTOM);
 	}
+
+	/* move src buffer to src_buf_queue from src_buf_ready_queue */
+	core_ctx = core->core_ctx[ctx->num];
+	if (!core_ctx) {
+		mfc_ctx_err("[RM] core_ctx is NULL\n");
+		mutex_unlock(&ctx->op_mode_mutex);
+		goto err_req_work;
+	}
+	mfc_move_buf_all(ctx, &core_ctx->src_buf_queue,
+			&ctx->src_buf_ready_queue, MFC_QUEUE_ADD_BOTTOM);
 
 	/*
 	 * When op_mode is changed at that time,

@@ -286,10 +286,7 @@ bool pablo_obte_buf_alloc(unsigned int id, char *buf_name, unsigned long size)
 	unsigned char *new_addr;
 	char *new_name = pablo_obte_buf_name(id);
 
-	if (use_vmalloc_memory)
-		new_addr = vzalloc(size);
-	else
-		new_addr = kzalloc(size, GFP_KERNEL);
+	new_addr = pablo_zalloc(size, GFP_KERNEL);
 
 	if (!new_addr) {
 		err_obte("failed pablo_obte_alloc(%s)\n", buf_name);
@@ -312,10 +309,7 @@ void pablo_obte_buf_free(unsigned int id)
 	unsigned char *addr = pablo_obte_buf_getaddr(id);
 
 	if (addr) {
-		if (use_vmalloc_memory)
-			vfree(addr);
-		else
-			kfree(addr);
+		pablo_free(addr);
 
 		pablo_obte_buf_setaddr(id, NULL);
 		dbg_obte("free('%s')\n", pablo_obte_buf_name(id));

@@ -2209,8 +2209,7 @@ struct mfc_dec {
 	int crc_luma1;
 	int crc_chroma1;
 
-	unsigned long consumed;
-	unsigned long remained_size;
+	unsigned int consumed;
 	dma_addr_t y_addr_for_pb;
 
 	int sei_parse;
@@ -2397,6 +2396,7 @@ struct mfc_ctx {
 	int curr_src_index;
 	int cmd_counter;
 	struct mutex op_mode_mutex;
+	int last_op_core;
 
 	/* interrupt lock */
 	struct mfc_core_intlock intlock;

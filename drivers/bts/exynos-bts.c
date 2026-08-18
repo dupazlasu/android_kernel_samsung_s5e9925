@@ -1425,7 +1425,7 @@ static int bts_parse_data(struct device_node *np, struct bts_device *data)
 				info[i].pd_id = 0;
 				info[i].pd_on = true;
 			} else {
-				info[i].pd_on = cal_pd_status(info[i].pd_id) ? true : false;
+				info[i].pd_on = false;
 			}
 
 			if (!of_get_child_count(child_np)) {

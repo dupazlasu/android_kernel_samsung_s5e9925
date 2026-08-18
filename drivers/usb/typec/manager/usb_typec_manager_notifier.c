@@ -19,7 +19,9 @@
 #if IS_ENABLED(CONFIG_VBUS_NOTIFIER)
 #include <linux/vbus_notifier.h>
 #endif
+#if IS_ENABLED(CONFIG_USB_NOTIFY_LAYER)
 #include <linux/usb_notify.h>
+#endif
 #include <linux/usb/typec/common/pdic_core.h>
 #include <linux/usb/typec/common/pdic_notifier.h>
 #include <linux/usb/typec/common/pdic_param.h>
@@ -138,13 +140,15 @@ static void manager_event_notify(struct work_struct *data)
 	switch (event_work->event.dest) {
 	case PDIC_NOTIFY_DEV_BATT:
 		if (event_work->event.sub3 == typec_manager.water.report_type) {
-			if (typec_manager.water.wVbus_det != event_work->event.sub1) {
-				typec_manager.water.wVbus_det = event_work->event.sub1;
+			if (typec_manager.water.detected || typec_manager.water.wVbus_det) {
+				if (typec_manager.water.wVbus_det != event_work->event.sub1) {
+					typec_manager.water.wVbus_det = event_work->event.sub1;
 #if defined(CONFIG_USB_HW_PARAM)
-				wVbus_time_update(typec_manager.water.wVbus_det);
+					wVbus_time_update(typec_manager.water.wVbus_det);
 #endif
-			} else if (!is_hiccup_event_saved)
-				return;
+				} else if (!is_hiccup_event_saved)
+					return;
+			}
 		}
 		break;
 	case PDIC_NOTIFY_DEV_USB:
@@ -469,6 +473,16 @@ void set_usb_enumeration_state(int state)
 #if defined(CONFIG_USB_HW_PARAM)
 		usb_enum_hw_param_data_update(typec_manager.usb.enum_state);
 #endif
+		if (state && typec_manager.usb_enum_check.pending) {
+			cancel_delayed_work(&typec_manager.usb_enum_check.dwork);
+			typec_manager.usb_enum_check.pending = false;
+#ifndef CONFIG_USB_CONFIGFS_F_MBIM
+		/* PD-USB cable Type */
+		if (typec_manager.pd_con_state)
+			manager_event_work(PDIC_NOTIFY_DEV_MANAGER, PDIC_NOTIFY_DEV_BATT,
+				PDIC_NOTIFY_ID_USB, 0, 0, PD_USB_TYPE);
+#endif
+		}
 	}
 }
 EXPORT_SYMBOL(set_usb_enumeration_state);
@@ -826,7 +840,8 @@ __visible_for_testing int manager_handle_pdic_notification(struct notifier_block
 		} else {
 			manager_event_work(p_noti.src, PDIC_NOTIFY_DEV_MUIC,
 					PDIC_NOTIFY_ID_WATER, p_noti.sub1, p_noti.sub2, p_noti.sub3);
-			manager_water_status_update(p_noti.sub1);
+			if (typec_manager.water.detected)
+				manager_water_status_update(p_noti.sub1);
 		}
 		return 0;
 	case PDIC_NOTIFY_ID_POFF_WATER:

@@ -68,7 +68,7 @@ static void prepare_sfr_dump(struct is_hardware *hardware)
 				continue;
 
 			reg_size = (hw_ip->regs_end[i] - hw_ip->regs_start[i] + 1);
-			hw_ip->sfr_dump[i] = kzalloc(reg_size, GFP_KERNEL);
+			hw_ip->sfr_dump[i] = pablo_zalloc(reg_size, GFP_KERNEL);
 			if (IS_ERR_OR_NULL(hw_ip->sfr_dump[i]))
 				serr_hw("sfr %d dump memory alloc fail", hw_ip, i);
 			else

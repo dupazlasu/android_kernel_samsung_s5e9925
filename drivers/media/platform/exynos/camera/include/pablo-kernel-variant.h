@@ -17,6 +17,8 @@
 #include <linux/interrupt.h>
 #include <linux/dma-buf.h>
 
+#include "pablo-mem.h"
+
 #define PKV_VER_GT(a, b, c)	(KERNEL_VERSION((a), (b), (c)) < LINUX_VERSION_CODE)
 #define PKV_VER_GE(a, b, c)	(KERNEL_VERSION((a), (b), (c)) <= LINUX_VERSION_CODE)
 #define PKV_VER_EQ(a, b, c)	(KERNEL_VERSION((a), (b), (c)) == LINUX_VERSION_CODE)

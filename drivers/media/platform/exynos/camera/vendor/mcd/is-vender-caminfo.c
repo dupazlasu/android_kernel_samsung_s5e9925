@@ -30,7 +30,7 @@ static int is_vender_caminfo_open(struct inode *inode, struct file *file)
 {
 	is_vender_caminfo *p_vender_caminfo;
 
-	p_vender_caminfo = vzalloc(sizeof(is_vender_caminfo));
+	p_vender_caminfo = pablo_zalloc(sizeof(is_vender_caminfo), GFP_KERNEL);
 	if(p_vender_caminfo == NULL) {
 		err("failed to allocate memory for is_vender_caminfo");
 		return -ENOMEM;
@@ -48,7 +48,7 @@ static int is_vender_caminfo_release(struct inode *inode, struct file *file)
 	is_vender_caminfo *p_vender_caminfo = (is_vender_caminfo *)file->private_data;
 
 	if (p_vender_caminfo)
-		vfree(p_vender_caminfo);
+		pablo_free(p_vender_caminfo);
 
 	return 0;
 }

@@ -462,24 +462,24 @@ static void is_hw_yuvp_free_iqset(struct is_hw_ip *hw_ip)
 
 	for (set_i = 0; set_i < COREX_MAX; set_i++) {
 		if (hw->cur_hw_iq_set[set_i].regs_yuvp) {
-			vfree(hw->cur_hw_iq_set[set_i].regs_yuvp);
+			pablo_free(hw->cur_hw_iq_set[set_i].regs_yuvp);
 			hw->cur_hw_iq_set[set_i].regs_yuvp = NULL;
 		}
 
 		if (hw->cur_hw_iq_set[set_i].regs_drcp) {
-			vfree(hw->cur_hw_iq_set[set_i].regs_drcp);
+			pablo_free(hw->cur_hw_iq_set[set_i].regs_drcp);
 			hw->cur_hw_iq_set[set_i].regs_drcp = NULL;
 		}
 	}
 
 	for (set_i = 0; set_i < IS_STREAM_COUNT; set_i++) {
 		if (hw->iq_set[set_i].regs_yuvp) {
-			vfree(hw->iq_set[set_i].regs_yuvp);
+			pablo_free(hw->iq_set[set_i].regs_yuvp);
 			hw->iq_set[set_i].regs_yuvp = NULL;
 		}
 
 		if (hw->iq_set[set_i].regs_drcp) {
-			vfree(hw->iq_set[set_i].regs_drcp);
+			pablo_free(hw->iq_set[set_i].regs_drcp);
 			hw->iq_set[set_i].regs_drcp = NULL;
 		}
 	}
@@ -495,14 +495,14 @@ static int is_hw_yuvp_alloc_iqset(struct is_hw_ip *hw_ip)
 	u32 set_i;
 
 	for (set_i = 0; set_i < IS_STREAM_COUNT; set_i++) {
-		hw->iq_set[set_i].regs_yuvp = vzalloc(sizeof(struct cr_set) * yuvp_reg_cnt);
+		hw->iq_set[set_i].regs_yuvp = pablo_zalloc(sizeof(struct cr_set) * yuvp_reg_cnt, GFP_KERNEL);
 		if (!hw->iq_set[set_i].regs_yuvp) {
 			mserr_hw("failed to alloc iq_set[%d].regs_yuvp", instance, hw_ip, set_i);
 			ret = -ENOMEM;
 			goto err_alloc;
 		}
 
-		hw->iq_set[set_i].regs_drcp = vzalloc(sizeof(struct cr_set) * drcp_reg_cnt);
+		hw->iq_set[set_i].regs_drcp = pablo_zalloc(sizeof(struct cr_set) * drcp_reg_cnt, GFP_KERNEL);
 		if (!hw->iq_set[set_i].regs_drcp) {
 			mserr_hw("failed to alloc iq_set[%d].regs_drcp", instance, hw_ip, set_i);
 			ret = -ENOMEM;
@@ -511,14 +511,14 @@ static int is_hw_yuvp_alloc_iqset(struct is_hw_ip *hw_ip)
 	}
 
 	for (set_i = 0; set_i < COREX_MAX; set_i++) {
-		hw->cur_hw_iq_set[set_i].regs_yuvp = vzalloc(sizeof(struct cr_set) * yuvp_reg_cnt);
+		hw->cur_hw_iq_set[set_i].regs_yuvp = pablo_zalloc(sizeof(struct cr_set) * yuvp_reg_cnt, GFP_KERNEL);
 		if (!hw->cur_hw_iq_set[set_i].regs_yuvp) {
 			mserr_hw("failed to alloc cur_hw_iq_set[%d].regs_yuvp", instance, hw_ip, set_i);
 			ret = -ENOMEM;
 			goto err_alloc;
 		}
 
-		hw->cur_hw_iq_set[set_i].regs_drcp = vzalloc(sizeof(struct cr_set) * drcp_reg_cnt);
+		hw->cur_hw_iq_set[set_i].regs_drcp = pablo_zalloc(sizeof(struct cr_set) * drcp_reg_cnt, GFP_KERNEL);
 		if (!hw->cur_hw_iq_set[set_i].regs_drcp) {
 			mserr_hw("failed to alloc cur_hw_iq_set[%d].regs_drcp", instance, hw_ip, set_i);
 			ret = -ENOMEM;
@@ -546,7 +546,7 @@ static int __nocfi is_hw_yuvp_open(struct is_hw_ip *hw_ip, u32 instance,
 	frame_manager_probe(hw_ip->framemgr, hw_ip->id, "HWYUVP");
 	frame_manager_open(hw_ip->framemgr, IS_MAX_HW_FRAME);
 
-	hw_ip->priv_info = vzalloc(sizeof(struct is_hw_yuvp));
+	hw_ip->priv_info = pablo_zalloc(sizeof(struct is_hw_yuvp), GFP_KERNEL);
 	if (!hw_ip->priv_info) {
 		mserr_hw("hw_ip->priv_info(null)", instance, hw_ip);
 		ret = -ENOMEM;
@@ -610,7 +610,7 @@ err_iqset_alloc:
 
 err_chain_create:
 err_lib_func:
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 err_alloc:
 	frame_manager_close(hw_ip->framemgr);
@@ -722,7 +722,7 @@ static int is_hw_yuvp_close(struct is_hw_ip *hw_ip, u32 instance)
 
 	is_hw_yuvp_free_iqset(hw_ip);
 
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 
 	frame_manager_close(hw_ip->framemgr);

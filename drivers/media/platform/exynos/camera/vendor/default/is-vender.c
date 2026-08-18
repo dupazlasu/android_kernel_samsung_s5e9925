@@ -95,7 +95,7 @@ int is_vender_probe(struct is_vender *vender)
 	snprintf(vender->fw_path, sizeof(vender->fw_path), "%s%s", IS_FW_DUMP_PATH, IS_FW);
 	snprintf(vender->request_fw_path, sizeof(vender->request_fw_path), "%s", IS_FW);
 
-	priv = (struct is_vender_specific *)kzalloc(
+	priv = (struct is_vender_specific *)pablo_zalloc(
 					sizeof(struct is_vender_specific), GFP_KERNEL);
 	if (!priv) {
 		probe_err("failed to allocate vender specific");
@@ -127,6 +127,8 @@ int is_vender_driver_init(void)
 
 int is_vender_driver_exit(void)
 {
+	struct is_vendor *vendor = &is_get_is_core()->vendor;
+	pablo_free(vendor->private_data);
 	return 0;
 }
 #endif

@@ -34,9 +34,6 @@ enum hdr_state {
 };
 
 #define MAX_HDR_CONTEXT 3 // 3 ctx buffer per layer
-struct hdr_context {
-	char *data;
-};
 
 struct exynos_hdr {
 	u32 id;
@@ -54,7 +51,8 @@ struct exynos_hdr {
 	struct dma_buf	*dma_buf;
 	u32 *dma_vbuf;
 
-	struct hdr_context ctx[MAX_HDR_CONTEXT];
+	void *ctx[MAX_HDR_CONTEXT];
+	int ctx_size;
 	atomic_t ctx_no;
 
 	const struct exynos_hdr_funcs *funcs;

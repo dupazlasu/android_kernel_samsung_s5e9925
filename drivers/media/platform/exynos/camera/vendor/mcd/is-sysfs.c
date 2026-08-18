@@ -5204,7 +5204,7 @@ static const struct attribute_group *svc_cam_groups[] = {
 
 static void svc_cam_release(struct device *dev)
 {
-	kfree(dev);
+	pablo_free(dev);
 }
 int svc_cheating_prevent_device_file_create(void)
 {
@@ -5233,7 +5233,7 @@ int svc_cheating_prevent_device_file_create(void)
 		pr_info("Success to find svc_sd : 0x%pK svc : 0x%pK\n", svc_sd, data);
 	}
 
-	dev = kzalloc(sizeof(struct device), GFP_KERNEL);
+	dev = pablo_zalloc(sizeof(struct device), GFP_KERNEL);
 	if (!dev) {
 		pr_err("Error allocating svc_ap device\n");
 		return -ENOMEM;
@@ -5256,7 +5256,7 @@ int svc_cheating_prevent_device_file_create(void)
 err_dev_reg:
 	put_device(dev);
 err_name:
-	kfree(dev);
+	pablo_free(dev);
 	dev = NULL;
 	return err;
 }

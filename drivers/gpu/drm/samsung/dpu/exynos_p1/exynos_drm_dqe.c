@@ -69,6 +69,8 @@ enum dqe_bpc_type {
 #define DQE_PRESET_RI_SHIFT 0
 #define DQE_PRESET_ALL_MASK 0xFFFF
 
+#define DQE_COLOR_BUF_SIZE_MAX 1280
+
 // saved LUTs of each mode type
 struct dqe_ctx_int {
 	u32 mode_attr[DQE_PRESET_ATTR_NUM];
@@ -134,7 +136,6 @@ struct dqe_colormode_data_header {
 
 static struct dqe_ctx_int *dqe_lut;
 static u32 mode_idx = DQE_MODE_MAIN;
-static char dqe_str_result[1024];
 
 // 2 luts in 1 reg
 #define R2L_I(_v, _i)	(((_v) << 1) | ((_i) & 0x1))
@@ -184,8 +185,8 @@ static s16 ps_v_c_4t[1][16][4] = {
 	},
 };
 
-static int dqe_conv_str2lut(const char *buffer, u32 *lut,
-				int size, bool printHex);
+static int dqe_conv_str2lut(const char *buffer, size_t buffer_len,
+			u32 *lut, int size, bool printHex);
 static int dqe_conv_str2cgc(const char *buffer, struct dqe_ctx_int *lut);
 static int dqe_dec_cgc17(struct dqe_ctx_int *lut, int mask, int wr_mode);
 static void dqe_set_degamma_lut(struct exynos_dqe *dqe,
@@ -691,9 +692,12 @@ static int dqe_alloc_colormode_dma(struct exynos_dqe *dqe,
 
 	// release old buf
 	if (dqe->colormode.dma_buf) {
-		if (dqe->colormode.dma_vbuf)
+		if (dqe->colormode.dma_vbuf) {
 			dma_buf_vunmap(dqe->colormode.dma_buf, dqe->colormode.dma_vbuf);
+			dqe->colormode.dma_vbuf = NULL;
+		}
 		dma_buf_put(dqe->colormode.dma_buf);
+		dqe->colormode.dma_buf = NULL;
 	}
 
 	vaddr = dma_buf_vmap(buf);
@@ -740,7 +744,7 @@ static u32 dqe_update_colormode(struct exynos_dqe *dqe,
 	const struct dqe_colormode_data_header *data_h;
 	const char *data;
 	u32 *lut;
-	u16 size, len, count = 0, count_cgc = 0;
+	u16 size, remain, len, count = 0, count_cgc = 0;
 
 	if (!dqe->colormode.dma_buf || !dqe->colormode.dma_vbuf)
 		return DQE_UPDATED_NONE;
@@ -771,17 +775,35 @@ static u32 dqe_update_colormode(struct exynos_dqe *dqe,
 
 	size = hdr->header_size;
 	while (size < hdr->total_size) {
+		/* Check if we can safely read data_h */
+		remain = hdr->total_size - size;
+		if (sizeof(*data_h) > remain) {
+			dqe_err(dqe, "data header exceeds buffer: size %lu, remain %u\n",
+					sizeof(*data_h), remain);
+			goto error;
+		}
+
 		data_h = (struct dqe_colormode_data_header *)((char *)hdr + size);
 		if (data_h->magic != DQE_COLORMODE_MAGIC) {
 			dqe_err(dqe, "invalid data magic %x\n", data_h->magic);
 			goto error;
 		}
 
+		/* Validate data header sizes against remaining buffer */
 		if (!data_h->total_size || !data_h->header_size ||
 				(data_h->total_size < data_h->header_size) ||
-				(data_h->header_size < sizeof(*data_h))) {
-			dqe_err(dqe, "invalid data size: total %d, header %d\n",
-					data_h->total_size, data_h->header_size);
+				(data_h->header_size < sizeof(*data_h)) ||
+				(data_h->total_size > hdr->total_size) ||
+				(data_h->header_size > hdr->total_size)) {
+			dqe_err(dqe, "invalid data size: total %d, header %d, max %u\n",
+					data_h->total_size, data_h->header_size, hdr->total_size);
+			goto error;
+		}
+
+		/* Check if data pointer would be within buffer */
+		if (data_h->total_size > remain) {
+			dqe_err(dqe, "data offset exceeds buffer: size %u, remain %u\n",
+					data_h->total_size, remain);
 			goto error;
 		}
 
@@ -880,7 +902,9 @@ static u32 dqe_update_colormode(struct exynos_dqe *dqe,
 			}
 
 			if (lut) {
-				ret = dqe_conv_str2lut(data, lut, len, false);
+				u16 data_len = data_h->total_size - data_h->header_size;
+
+				ret = dqe_conv_str2lut(data, data_len, lut, len, false);
 				if (ret < 0) {
 					dqe_err(dqe, "str2lut error id %d, len %d data %s\n", data_h->id, len, data);
 					goto error_locked;
@@ -2080,18 +2104,18 @@ static ssize_t dqe_conv_lut2str(u32 *lut, int size, char *out)
 	int i;
 	char str[10] = {0,};
 	ssize_t ret = 0;
+	char buf[DQE_COLOR_BUF_SIZE_MAX] = { 0, };
 
-	dqe_str_result[0] = '\0';
 	for (i = 0 ; i < size; i++) {
 		snprintf(str, 9, "%d,", lut[i]);
-		strcat(dqe_str_result, str);
+		strcat(buf, str);
 	}
-	dqe_str_result[strlen(dqe_str_result)-1] = '\0';
+	buf[strlen(buf)-1] = '\0';
 
 	if (out)
-		ret = sprintf(out, "%s\n", dqe_str_result);
+		ret = snprintf(out, PAGE_SIZE, "%s\n", buf);
 	else
-		pr_info("%s %s\n", __func__, dqe_str_result);
+		pr_info("%s %s\n", __func__, buf);
 	return ret;
 }
 
@@ -2099,19 +2123,19 @@ static ssize_t dqe_conv_cgc2str(struct dqe_ctx_int *lut, char *out)
 {
 	int i, j;
 	char str[10] = {0,};
+	char buf[DQE_COLOR_BUF_SIZE_MAX] = { 0, };
 	int rgb = lut->cgc17_enc_rgb;
 	int idx = lut->cgc17_enc_idx;
 	int row = ARRAY_SIZE(lut->cgc17_encoded[0][0]);
 	int col = ARRAY_SIZE(lut->cgc17_encoded[0][0][0]);
 
-	dqe_str_result[0] = '\0';
 	for (i = 0 ; i < row; i++)
 		for (j = 0; j < col; j++) {
 			snprintf(str, 9, "%08x", lut->cgc17_encoded[rgb][idx][i][j]);
-			strcat(dqe_str_result, str);
+			strcat(buf, str);
 		}
-	dqe_str_result[strlen(dqe_str_result)] = '\0';
-	return snprintf(out, PAGE_SIZE, "%s\n", dqe_str_result);
+	buf[strlen(buf)] = '\0';
+	return snprintf(out, PAGE_SIZE, "%s\n", buf);
 }
 
 static inline int dqe_conv_str2uint(char *head, u32 *buf)
@@ -2135,45 +2159,80 @@ static inline int dqe_conv_str2uint(char *head, u32 *buf)
 	return ret;
 }
 
-static int dqe_conv_str2lut(const char *buffer, u32 *lut, int size, bool printHex)
+static int dqe_get_str2lut_buf(const char *in_buf, size_t in_buf_len, char* out_buf, size_t out_buf_len)
 {
-	int idx, k;
+	char *ptr;
+
+	if (!in_buf || !out_buf) {
+		pr_err("%s buffer is NULL\n", __func__);
+		return -1;
+	}
+
+	if (in_buf_len == 0 || out_buf_len == 0) {
+		pr_err("%s invalid in_buf_len: %zu, out_buf_len: %zu\n", __func__, in_buf_len, out_buf_len);
+		return -1;
+	}
+
+	if (in_buf_len > out_buf_len - 1) {
+		pr_err("%s in_buf too large (%zu > %zu)\n",
+				__func__, in_buf_len, out_buf_len - 1);
+		return -1;
+	}
+
+	if (!memchr(in_buf, '\0', in_buf_len))
+		pr_debug("%s input in_buf has no NUL\n", __func__);
+
+	memcpy(out_buf, in_buf, in_buf_len);
+	*(out_buf + in_buf_len) = '\0';
+
+	ptr = memchr(out_buf, '\n', in_buf_len);
+	if (ptr) {
+		pr_debug("%s replace newline with NUL in in_buf\n", __func__);
+		*ptr = '\0';
+	}
+
+	return 0;
+}
+
+static int dqe_conv_str2lut(const char *buffer, size_t buffer_len,
+			    u32 *lut, int size, bool printHex)
+{
+	int idx;
 	int ret = 0;
 	char *ptr = NULL;
-	char *head;
+	char *head = NULL;
+	char buf[DQE_COLOR_BUF_SIZE_MAX];
 
-	head = (char *)buffer;
-	if  (*head == 0) {
+	if (!buffer || !lut) {
+		pr_err("%s buffer or lut is NULL\n", __func__);
+		return -1;
+	}
+
+	ret = dqe_get_str2lut_buf(buffer, buffer_len, buf, sizeof(buf));
+	if (ret < 0) {
+		return ret;
+	}
+	head = buf;
+
+	if  (head == NULL || *head == 0) {
 		pr_err("%s buffer is null.\n", __func__);
 		return -1;
 	}
 
 	pr_debug("%s %s\n", __func__, head);
 
-	for (idx = 0; idx < size-1; idx++) {
-		ptr = strchr(head, ',');
+	for (idx = 0; idx < size; idx++) {
+		ptr = strsep(&head, ",");
 		if (ptr == NULL) {
 			pr_err("%s not found comma.(%d)\n", __func__, idx);
 			ret = -EINVAL;
 			goto done;
 		}
-		*ptr = 0;
-		ret = dqe_conv_str2uint(head, &lut[idx]);
+
+		ret = dqe_conv_str2uint(ptr, &lut[idx]);
 		if (ret < 0)
 			goto done;
-		head = ptr + 1;
 	}
-
-	k = 0;
-	if (*(head + k) == '-')
-		k++;
-	while (*(head + k) >= '0' && *(head + k) <= '9')
-		k++;
-	*(head + k) = 0;
-
-	ret = dqe_conv_str2uint(head, &lut[idx]);
-	if (ret < 0)
-		goto done;
 
 	for (idx = 0; idx < size; idx++) {
 		if (printHex)
@@ -2273,7 +2332,7 @@ static ssize_t dqe_disp_dither_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->disp_dither, ARRAY_SIZE(lut->disp_dither), true);
+	ret = dqe_conv_str2lut(buffer, count, lut->disp_dither, ARRAY_SIZE(lut->disp_dither), true);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2295,7 +2354,7 @@ static ssize_t dqe_cgc_dither_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->cgc_dither, ARRAY_SIZE(lut->cgc_dither), true);
+	ret = dqe_conv_str2lut(buffer, count, lut->cgc_dither, ARRAY_SIZE(lut->cgc_dither), true);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2396,7 +2455,7 @@ static ssize_t dqe_cgc17_con_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->cgc17_con, ARRAY_SIZE(lut->cgc17_con), true);
+	ret = dqe_conv_str2lut(buffer, count, lut->cgc17_con, ARRAY_SIZE(lut->cgc17_con), true);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) { // do not update dqe_ctx_reg for preset LUTs
@@ -2420,7 +2479,7 @@ static ssize_t dqe_gamma_matrix_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->gamma_matrix, ARRAY_SIZE(lut->gamma_matrix), false);
+	ret = dqe_conv_str2lut(buffer, count, lut->gamma_matrix, ARRAY_SIZE(lut->gamma_matrix), false);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2476,7 +2535,7 @@ static ssize_t dqe_gamma_store(struct exynos_dqe *dqe,
 	int ret;
 	u32 bpc = (lut->regamma_lut_ext) ? DQE_BPC_TYPE_8 : DQE_BPC_TYPE_10;
 
-	ret = dqe_conv_str2lut(buffer, lut->regamma_lut[bpc], ARRAY_SIZE(lut->regamma_lut[0]), false);
+	ret = dqe_conv_str2lut(buffer, count, lut->regamma_lut[bpc], ARRAY_SIZE(lut->regamma_lut[0]), false);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2532,7 +2591,7 @@ static ssize_t dqe_degamma_store(struct exynos_dqe *dqe,
 	int ret;
 	u32 bpc = (lut->degamma_lut_ext) ? DQE_BPC_TYPE_8 : DQE_BPC_TYPE_10;
 
-	ret = dqe_conv_str2lut(buffer, lut->degamma_lut[bpc], ARRAY_SIZE(lut->degamma_lut[0]), false);
+	ret = dqe_conv_str2lut(buffer, count, lut->degamma_lut[bpc], ARRAY_SIZE(lut->degamma_lut[0]), false);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2588,7 +2647,7 @@ static ssize_t dqe_hsc48_lcg_store(struct exynos_dqe *dqe,
 	int ret;
 	int idx = lut->hsc48_lcg_idx;
 
-	ret = dqe_conv_str2lut(buffer, lut->hsc48_lcg[idx], ARRAY_SIZE(lut->hsc48_lcg[0]), true);
+	ret = dqe_conv_str2lut(buffer, count, lut->hsc48_lcg[idx], ARRAY_SIZE(lut->hsc48_lcg[0]), true);
 	if (ret < 0)
 		return ret;
 	return count;
@@ -2607,7 +2666,7 @@ static ssize_t dqe_hsc_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->hsc48_lut, DQE_HSC_LUT_CTRL_MAX+DQE_HSC_LUT_POLY_MAX, true);
+	ret = dqe_conv_str2lut(buffer, count, lut->hsc48_lut, DQE_HSC_LUT_CTRL_MAX+DQE_HSC_LUT_POLY_MAX, true);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2629,7 +2688,7 @@ static ssize_t dqe_aps_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->atc_lut, ARRAY_SIZE(lut->atc_lut), false);
+	ret = dqe_conv_str2lut(buffer, count, lut->atc_lut, ARRAY_SIZE(lut->atc_lut), false);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2718,7 +2777,7 @@ static ssize_t dqe_scl_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->scl_input, ARRAY_SIZE(lut->scl_input), true);
+	ret = dqe_conv_str2lut(buffer, count, lut->scl_input, ARRAY_SIZE(lut->scl_input), true);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2740,7 +2799,7 @@ static ssize_t dqe_de_store(struct exynos_dqe *dqe,
 {
 	int ret;
 
-	ret = dqe_conv_str2lut(buffer, lut->de_lut, ARRAY_SIZE(lut->de_lut), false);
+	ret = dqe_conv_str2lut(buffer, count, lut->de_lut, ARRAY_SIZE(lut->de_lut), false);
 	if (ret < 0)
 		return ret;
 	if (mode_idx == DQE_MODE_MAIN) // do not update dqe_ctx_reg for preset LUTs
@@ -2805,8 +2864,8 @@ static ssize_t dqe_off_ctrl_show(struct exynos_dqe *dqe,
 	char str[24] = {0,};
 	int i;
 	u32 value;
+	char buffer[DQE_COLOR_BUF_SIZE_MAX] = { 0, };
 
-	dqe_str_result[0] = '\0';
 	for (i = 0 ; i < DQE_OFF_CTRL_MAX; i++) {
 		switch (i) {
 		case DQE_OFF_CTRL_CGC:
@@ -2842,10 +2901,10 @@ static ssize_t dqe_off_ctrl_show(struct exynos_dqe *dqe,
 			snprintf(str, 24, "%s(%d),", dqe_off_ctrl_name[i], i);
 		else
 			snprintf(str, 24, "%s(%d):%s,", dqe_off_ctrl_name[i], i, dqe_print_onoff(&value));
-		strcat(dqe_str_result, str);
+		strcat(buffer, str);
 	}
-	dqe_str_result[strlen(dqe_str_result)-1] = '\0';
-	return snprintf(buf, PAGE_SIZE, "%s\n", dqe_str_result);
+	buffer[strlen(buffer)-1] = '\0';
+	return snprintf(buf, PAGE_SIZE, "%s\n", buffer);
 }
 
 static ssize_t dqe_off_ctrl_store(struct exynos_dqe *dqe,
@@ -2913,10 +2972,10 @@ static ssize_t dqe_xml_show(struct exynos_dqe *dqe,
 {
 	if (strlen(dqe->xml_suffix) <= 0)
 		return 0;
-	sprintf(dqe_str_result, "%s.xml", dqe->xml_suffix);
-	pr_info("%s xml_path: %s\n", __func__, dqe_str_result);
 
-	return sprintf(buf, "%s\n", dqe_str_result);
+	pr_info("%s xml_path: %s\n", __func__, dqe->xml_suffix);
+
+	return snprintf(buf, PAGE_SIZE, "%s.xml\n", dqe->xml_suffix);
 }
 
 DQE_CREATE_SYSFS_FUNC_SHOW(xml);

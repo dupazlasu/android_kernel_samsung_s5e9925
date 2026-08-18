@@ -216,7 +216,7 @@ static int is_hw_mcsc_open(struct is_hw_ip *hw_ip, u32 instance,
 	frame_manager_probe(hw_ip->framemgr, hw_ip->id, "HWMCS");
 	frame_manager_open(hw_ip->framemgr, IS_MAX_HW_FRAME);
 
-	hw_ip->priv_info = vzalloc(sizeof(struct is_hw_mcsc));
+	hw_ip->priv_info = pablo_zalloc(sizeof(struct is_hw_mcsc), GFP_KERNEL);
 	if (!hw_ip->priv_info) {
 		mserr_hw("hw_ip->priv_info(null)", instance, hw_ip);
 		ret = -ENOMEM;
@@ -262,7 +262,7 @@ static int is_hw_mcsc_open(struct is_hw_ip *hw_ip, u32 instance,
 	return 0;
 
 err_query_cap:
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 err_alloc:
 	frame_manager_close(hw_ip->framemgr);
@@ -342,7 +342,7 @@ static int is_hw_mcsc_close(struct is_hw_ip *hw_ip, u32 instance)
 	if (!test_bit(HW_OPEN, &hw_ip->state))
 		return 0;
 
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 	frame_manager_close(hw_ip->framemgr);
 

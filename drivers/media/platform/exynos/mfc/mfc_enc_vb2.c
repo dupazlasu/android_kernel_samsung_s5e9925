@@ -164,8 +164,7 @@ static int mfc_enc_buf_prepare(struct vb2_buffer *vb)
 	struct mfc_raw_info *raw;
 	unsigned int index = vb->index;
 	struct mfc_buf *buf = vb_to_mfc_buf(vb);
-	struct dma_buf *bufcon_dmabuf[MFC_MAX_PLANES];
-	int i, mem_get_count = 0;
+	int i;
 	size_t buf_size;
 
 	mfc_debug_enter();
@@ -211,44 +210,7 @@ static int mfc_enc_buf_prepare(struct vb2_buffer *vb)
 			}
 		}
 
-		for (i = 0; i < ctx->src_fmt->mem_planes; i++) {
-			bufcon_dmabuf[i] = dma_buf_get(vb->planes[i].m.fd);
-			if (IS_ERR(bufcon_dmabuf[i])) {
-				mfc_ctx_err("failed to get bufcon dmabuf\n");
-				goto err_mem_put;
-			}
-
-			mem_get_count++;
-			buf->num_bufs_in_batch = mfc_bufcon_get_buf_count(bufcon_dmabuf[i]);
-			mfc_debug(3, "[BUFCON] num bufs in batch: %d\n", buf->num_bufs_in_batch);
-			if (buf->num_bufs_in_batch == 0) {
-				mfc_ctx_err("[BUFCON] bufs count couldn't be zero\n");
-				goto err_mem_put;
-			}
-
-			if (buf->num_bufs_in_batch < 0)
-				buf->num_bufs_in_batch = 0;
-
-			if (!ctx->batch_mode && buf->num_bufs_in_batch > 0) {
-				ctx->batch_mode = 1;
-				mfc_debug(2, "[BUFCON] buffer batch mode enable\n");
-			}
-
-			if (buf->num_bufs_in_batch > 0) {
-				if (mfc_bufcon_get_daddr(ctx, buf, bufcon_dmabuf[i], i)) {
-					mfc_ctx_err("[BUFCON] failed to get daddr[%d] in buffer container\n", i);
-					goto err_mem_put;
-				}
-
-				ctx->framerate = buf->num_valid_bufs * ENC_DEFAULT_CAM_CAPTURE_FPS;
-				mfc_debug(3, "[BUFCON] framerate: %ld\n", ctx->framerate);
-
-				dma_buf_put(bufcon_dmabuf[i]);
-			} else {
-				dma_buf_put(bufcon_dmabuf[i]);
 				mfc_calc_base_addr(ctx, vb, ctx->src_fmt);
-			}
-		}
 
 		call_cop(ctx, to_buf_ctrls, ctx, &ctx->src_ctrls[index]);
 
@@ -265,12 +227,6 @@ static int mfc_enc_buf_prepare(struct vb2_buffer *vb)
 
 	mfc_debug_leave();
 	return 0;
-
-err_mem_put:
-	for (i = 0; i < mem_get_count; i++)
-		dma_buf_put(bufcon_dmabuf[i]);
-
-	return -ENOMEM;
 }
 
 static void mfc_enc_buf_finish(struct vb2_buffer *vb)

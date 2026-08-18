@@ -620,14 +620,14 @@ static int sensor_dw9839_actuator_probe(struct i2c_client *client,
 		return -EPROBE_DEFER;
 	}
 
-	actuator = kzalloc(sizeof(struct is_actuator), GFP_KERNEL);
+	actuator = pablo_zalloc(sizeof(struct is_actuator), GFP_KERNEL);
 	if (!actuator) {
 		err("acuator is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	subdev_actuator = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_actuator = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_actuator) {
 		err("subdev_actuator is NULL");
 		ret = -ENOMEM;
@@ -647,7 +647,7 @@ static int sensor_dw9839_actuator_probe(struct i2c_client *client,
 	actuator->init_cal_setting = false;
 	actuator->actual_pos_support = true;
 
-	actuator->priv_info = vzalloc(sizeof(struct dw9839_actuator_info));
+	actuator->priv_info = pablo_zalloc(sizeof(struct dw9839_actuator_info), GFP_KERNEL);
 	if (!actuator->priv_info) {
 		err("actuator->priv_info alloc fail");
 		ret = -ENOMEM;
@@ -670,10 +670,10 @@ static int sensor_dw9839_actuator_probe(struct i2c_client *client,
 
 p_err:
 	if (actuator)
-		kzfree(actuator);
+		pablo_free(actuator);
 
 	if (subdev_actuator)
-		kzfree(subdev_actuator);
+		pablo_free(subdev_actuator);
 
 	return ret;
 }

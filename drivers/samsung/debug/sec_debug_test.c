@@ -2069,12 +2069,14 @@ static int sec_debug_set_force_error(const char *val, const struct kernel_param 
 	return 0;
 }
 
-static const struct kernel_param_ops sec_debug_force_error_ops = {
+static const struct kernel_param_ops __maybe_unused sec_debug_force_error_ops = {
 	.set	= sec_debug_set_force_error,
 	.get	= sec_debug_get_force_error,
 };
 
+#if !IS_ENABLED(CONFIG_SAMSUNG_PRODUCT_SHIP) || IS_ENABLED(CONFIG_SEC_FACTORY)
 module_param_cb(force_error, &sec_debug_force_error_ops, NULL, 0600);
+#endif
 
 static int secdbg_test_probe(struct platform_device *pdev)
 {

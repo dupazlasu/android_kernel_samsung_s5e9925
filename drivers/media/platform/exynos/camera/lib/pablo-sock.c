@@ -402,7 +402,7 @@ static int pablo_sock_con_open(struct pablo_sock_con **newconp, struct socket *n
 	struct pablo_sock_con *newcon;
 	int ret;
 
-	newcon = kzalloc(sizeof(*newcon), GFP_KERNEL);
+	newcon = pablo_zalloc(sizeof(*newcon), GFP_KERNEL);
 	if (!newcon) {
 		err("failed to alloc new connection for %s", svr->name);
 		return -ENOMEM;
@@ -415,7 +415,7 @@ static int pablo_sock_con_open(struct pablo_sock_con **newconp, struct socket *n
 		ret = svr->on_connect(newcon);
 		if (ret) {
 			err("connect callback error: %d", ret);
-			kfree(newcon);
+			pablo_free(newcon);
 			return ret;
 		}
 	}
@@ -433,7 +433,7 @@ static int pablo_sock_con_open(struct pablo_sock_con **newconp, struct socket *n
 			atomic_dec(&svr->num_of_cons);
 			list_del(&newcon->list);
 			spin_unlock(&svr->slock);
-			kfree(newcon);
+			pablo_free(newcon);
 			return ret;
 		}
 	}
@@ -459,7 +459,7 @@ static void pablo_sock_con_close(struct pablo_sock_con *con)
 		list_del(&con->list);
 		spin_unlock(&con->server->slock);
 
-		kfree(con);
+		pablo_free(con);
 	}
 }
 
@@ -632,7 +632,7 @@ int pablo_tuning_on_open(struct pablo_sock_con *con)
 	unsigned int cur_con_idx;
 	int ret;
 
-	ptc = vzalloc(sizeof(*ptc));
+	ptc = pablo_zalloc(sizeof(*ptc), GFP_KERNEL);
 	if (!ptc) {
 		err("failed to alloc connection private data");
 		return -ENOMEM;
@@ -668,7 +668,7 @@ int pablo_tuning_on_open(struct pablo_sock_con *con)
 err_invalid_filp:
 err_too_many_con:
 err_set_buf_size:
-	vfree(ptc);
+	pablo_free(ptc);
 
 	return ret;
 }
@@ -680,7 +680,7 @@ void pablo_tuning_on_close(struct pablo_sock_con *con)
 	if (con) {
 		ptc = (struct pablo_tuning_con *)con->priv;
 		ptc->filp->private_data = NULL;
-		vfree(ptc);
+		pablo_free(ptc);
 	}
 }
 
@@ -702,7 +702,7 @@ int pablo_tuning_start(void)
 	struct pablo_tuning_svr *its;
 	int ret;
 
-	tuning_svr = kzalloc(sizeof(*tuning_svr), GFP_KERNEL);
+	tuning_svr = pablo_zalloc(sizeof(*tuning_svr), GFP_KERNEL);
 	if (!tuning_svr) {
 		err("failed to alloc tuning server");
 		return -ENOMEM;
@@ -717,10 +717,10 @@ int pablo_tuning_start(void)
 	tuning_svr->on_accept = pablo_tuning_on_accept;
 	tuning_svr->on_connect = pablo_tuning_on_connect;
 
-	its = kzalloc(sizeof(*its), GFP_KERNEL);
+	its = pablo_zalloc(sizeof(*its), GFP_KERNEL);
 	if (!its) {
 		err("failed to alloc tuning server private data");
-		kfree(tuning_svr);
+		pablo_free(tuning_svr);
 		return -ENOMEM;
 	}
 	tuning_svr->priv = (void *)(its);
@@ -729,8 +729,8 @@ int pablo_tuning_start(void)
 	ret = pablo_sock_server_start(tuning_svr);
 	if (ret) {
 		err("failed to start socket server for %s", tuning_svr->name);
-		kfree(its);
-		kfree(tuning_svr);
+		pablo_free(its);
+		pablo_free(tuning_svr);
 		tuning_svr = NULL;
 	}
 
@@ -741,8 +741,8 @@ void pablo_tuning_stop(void *data)
 {
 	if (tuning_svr) {
 		pablo_sock_server_stop(tuning_svr);
-		kfree(tuning_svr->priv);
-		kfree(tuning_svr);
+		pablo_free(tuning_svr->priv);
+		pablo_free(tuning_svr);
 		tuning_svr = NULL;
 	}
 }

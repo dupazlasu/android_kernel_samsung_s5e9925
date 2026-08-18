@@ -558,7 +558,7 @@ static int sensor_ois_idg2030_probe(struct i2c_client *client,
 	}
 	ois->ois_ops = &ois_ops;
 
-	subdev_ois = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_ois = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_ois) {
 		err("subdev_ois is NULL");
 		ret = -ENOMEM;

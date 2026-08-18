@@ -447,18 +447,18 @@ static int sensor_ak7372_actuator_probe(struct i2c_client *client,
 	for (i = 0; i < sensor_id_len; i++) {
 		device = &core->sensor[sensor_id[i]];
 
-		actuator = kzalloc(sizeof(struct is_actuator), GFP_KERNEL);
+		actuator = pablo_zalloc(sizeof(struct is_actuator), GFP_KERNEL);
 		if (!actuator) {
 			err("actuator is NULL");
 			ret = -ENOMEM;
 			goto p_err;
 		}
 
-		subdev_actuator = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+		subdev_actuator = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 		if (!subdev_actuator) {
 			err("subdev_actuator is NULL");
 			ret = -ENOMEM;
-			kfree(actuator);
+			pablo_free(actuator);
 			goto p_err;
 		}
 

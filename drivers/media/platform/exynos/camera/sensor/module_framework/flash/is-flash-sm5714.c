@@ -244,18 +244,18 @@ static int __init flash_sm5714_probe(struct device *dev, struct i2c_client *clie
 		}
 	}
 
-	flash = kzalloc(sizeof(struct is_flash) * sensor_id_len, GFP_KERNEL);
+	flash = pablo_zalloc(sizeof(struct is_flash) * sensor_id_len, GFP_KERNEL);
 	if (!flash) {
 		err("flash is NULL");
 		ret = -ENOMEM;
 		goto p_err;
 	}
 
-	subdev_flash = kzalloc(sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
+	subdev_flash = pablo_zalloc(sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
 	if (!subdev_flash) {
 		err("subdev_flash is NULL");
 		ret = -ENOMEM;
-		kfree(flash);
+		pablo_free(flash);
 		goto p_err;
 	}
 
@@ -268,8 +268,8 @@ static int __init flash_sm5714_probe(struct device *dev, struct i2c_client *clie
 		flash[i].flash_gpio = of_get_named_gpio(dnode, "flash-gpio", 0);
 		if (!gpio_is_valid(flash[i].flash_gpio)) {
 			dev_err(dev, "failed to get FLASH_GPIO\n");
-			kfree(flash);
-			kfree(subdev_flash);
+			pablo_free(flash);
+			pablo_free(subdev_flash);
 			return -EINVAL;
 		} else {
 			gpio_request_one(flash[i].flash_gpio, GPIOF_OUT_INIT_LOW, "CAM_FLASH_OUTPUT");
@@ -279,8 +279,8 @@ static int __init flash_sm5714_probe(struct device *dev, struct i2c_client *clie
 		flash[i].torch_gpio = of_get_named_gpio(dnode, "torch-gpio", 0);
 		if (!gpio_is_valid(flash[i].torch_gpio)) {
 			dev_err(dev, "failed to get TORCH_GPIO\n");
-			kfree(flash);
-			kfree(subdev_flash);
+			pablo_free(flash);
+			pablo_free(subdev_flash);
 			return -EINVAL;
 		} else {
 			gpio_request_one(flash[i].torch_gpio, GPIOF_OUT_INIT_LOW, "CAM_TORCH_OUTPUT");

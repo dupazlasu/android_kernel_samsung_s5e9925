@@ -14,6 +14,8 @@
 
 #include <linux/platform_device.h>
 #include <media/videobuf2-v4l2.h>
+#include <linux/vmalloc.h>
+#include <linux/slab.h>
 #if defined(CONFIG_VIDEOBUF2_DMA_SG)
 #include <media/videobuf2-dma-sg.h>
 #endif
@@ -21,6 +23,80 @@
 #include "exynos-is-sensor.h"
 
 #define SECURE_HEAPNAME "secure_camera-secure"
+
+#define PABLO_CONTIG_PAGE_ORDER		0
+#define PABLO_CONTIG_MEM_SIZE		(PAGE_SIZE << PABLO_CONTIG_PAGE_ORDER)
+
+/**
+ * pablo_malloc - memory allocation wrapper
+ * @size: size of memory to allocate
+ * @flags: describe the allocation context
+ *
+ * This function uses kmalloc for objects smaller than PABLO_CONTIG_MEM_SIZE
+ * and vmalloc for larger objects. It is recommended to use this function
+ * instead of kmalloc/vmalloc directly to avoid memory allocation failures
+ *
+ * Returns: Pointer to allocated memory
+ */
+static inline void *pablo_malloc(size_t size, gfp_t flags)
+{
+	if (size > PABLO_CONTIG_MEM_SIZE)
+		return vmalloc(size);
+
+	return kmalloc(size, flags);
+}
+
+/**
+ * pablo_malloc_array - memory allocation wrapper for an array
+ * @n: number of elements
+ * @size: element size
+ * @flags: describe the allocation context
+ *
+ * Returns: Pointer to allocated memory
+ */
+static inline void *pablo_malloc_array(size_t n, size_t size, gfp_t flags)
+{
+	if ((n * size) > PABLO_CONTIG_MEM_SIZE)
+		return vmalloc(n * size);
+
+	return kmalloc_array(n, size, flags);
+}
+
+/**
+ * pablo_zalloc - memory allocation wrapper to set zero
+ * @size: size of memory to allocate
+ * @flags: describe the allocation context
+ *
+ * Returns: Pointer to allocated memory
+ */
+static inline void *pablo_zalloc(size_t size, gfp_t flags)
+{
+	if (size > PABLO_CONTIG_MEM_SIZE)
+		return vzalloc(size);
+
+	return kzalloc(size, flags);
+}
+
+/**
+ * pablo_calloc - memory allocation wrapper for an array to set zero
+ * @n: number of elements
+ * @size: element size
+ * @flags: describe the allocation context
+ *
+ * Returns: Pointer to allocated memory
+ */
+static inline void *pablo_calloc(size_t n, size_t size, gfp_t flags)
+{
+	if ((n * size) > PABLO_CONTIG_MEM_SIZE)
+		return vzalloc(n * size);
+
+	return kcalloc(n, size, flags);
+}
+
+static inline void pablo_free(const void *addr)
+{
+	kvfree(addr);
+}
 
 struct is_sub_dma_buf {
 	u32				vid;

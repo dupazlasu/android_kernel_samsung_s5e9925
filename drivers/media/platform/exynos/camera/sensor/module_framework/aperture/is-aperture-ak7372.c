@@ -380,18 +380,18 @@ int sensor_ak7372_aperture_probe(struct i2c_client *client,
 			goto p_err;
 		}
 
-		aperture = kzalloc(sizeof(struct is_aperture), GFP_KERNEL);
+		aperture = pablo_zalloc(sizeof(struct is_aperture), GFP_KERNEL);
 		if (!aperture) {
 			err("aperture is NULL");
 			ret = -ENOMEM;
 			goto p_err;
 		}
 
-		subdev_aperture = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+		subdev_aperture = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 		if (!subdev_aperture) {
 			err("subdev_aperture is NULL");
 			ret = -ENOMEM;
-			kfree(aperture);
+			pablo_free(aperture);
 			goto p_err;
 		}
 

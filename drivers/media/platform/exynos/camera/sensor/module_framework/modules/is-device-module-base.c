@@ -1634,7 +1634,7 @@ static int sensor_module_probe(struct platform_device *pdev)
 
 p_err:
 	probe_info("%s(%d)\n", __func__, ret);
-	kfree(pdata);
+	pablo_free(pdata);
 
 	return ret;
 }

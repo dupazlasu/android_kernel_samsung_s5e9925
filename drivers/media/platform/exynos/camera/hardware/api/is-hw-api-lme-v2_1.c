@@ -67,11 +67,42 @@ unsigned int lme_hw_is_occurred(unsigned int status, enum lme_event_type type)
 	return status & mask;
 }
 
+#ifdef LME_PERFRAME_SWRESET
+static int lme_hw_s_dma_reset(void __iomem *base)
+{
+	u32 reset_count = 0;
+	u32 temp;
+
+	LME_SET_R(base, GET_COREX_OFFSET(COREX_DIRECT) + LME_R_TRANS_STOP_REQ, 0x1);
+
+	while (1) {
+		temp = LME_GET_R(base, GET_COREX_OFFSET(COREX_DIRECT) +
+					LME_R_TRANS_STOP_REQ_RDY);
+		if (temp == 1)
+			break;
+		if (reset_count > LME_TRY_COUNT)
+			return reset_count;
+		reset_count++;
+	}
+
+	dbg_hw(1, "[LME] %s done.\n", __func__);
+
+	return 0;
+}
+#endif
+
 int lme_hw_s_reset(void __iomem *base)
 {
 	u32 reset_count = 0;
 	u32 temp;
-	u32 ret;
+	int ret = 0;
+#ifdef LME_PERFRAME_SWRESET
+	ret = lme_hw_s_dma_reset(base);
+	if (ret) {
+		err_hw("[LME] sw dma reset fail");
+		return ret;
+	}
+#endif
 
 	LME_SET_R(base + GET_LME_COREX_OFFSET(COREX_DIRECT), LME_R_SW_RESET, 0x1);
 
@@ -98,6 +129,9 @@ void lme_hw_s_init(void __iomem *base)
 {
 	/* LME_SET_R(base, LME_R_AUTO_MASK_PREADY, 0x1); */
 	LME_SET_F(base + GET_LME_COREX_OFFSET(COREX_DIRECT), LME_R_IP_PROCESSING, LME_F_IP_PROCESSING, 0x1);
+#ifdef LME_PERFRAME_SWRESET
+	LME_SET_R(base, LME_R_FORCE_INTERNAL_CLOCK, 1);
+#endif
 }
 
 int lme_hw_wait_idle(void __iomem *base, u32 set_id)
@@ -134,25 +168,6 @@ int lme_hw_wait_idle(void __iomem *base, u32 set_id)
 			idle, int_all);
 
 	return ret;
-}
-
-int lme_hw_check_idle(void __iomem *base, u32 set_id)
-{
-    u32 ret;
-    u32 idle;
-    u32 chain_idle;
-
-    dbg_lme(1, "[API][%s] is called!", __func__);
-
-    idle = LME_GET_F(base + GET_LME_COREX_OFFSET(COREX_DIRECT), LME_R_IDLENESS_STATUS, LME_F_IDLENESS_STATUS);
-    chain_idle = LME_GET_F(base + GET_LME_COREX_OFFSET(COREX_DIRECT), LME_R_IDLENESS_STATUS, LME_F_CHAIN_IDLENESS_STATUS);
-
-    dbg_lme(1,"[LME] idle status when FS coming (idle:%d, chain_idle:%d)\n",
-        idle, chain_idle);
-
-    ret = chain_idle * 16 + idle;
-
-    return ret;
 }
 
 void lme_hw_dump(void __iomem *base)

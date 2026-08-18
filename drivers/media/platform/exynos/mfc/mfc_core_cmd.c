@@ -527,6 +527,14 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 
 	/* Operation core mode */
 	mutex_lock(&ctx->op_mode_mutex);
+
+	if ((ctx->stream_op_mode == MFC_OP_TWO_MODE1 ||
+	     ctx->stream_op_mode == MFC_OP_TWO_MODE2) &&
+	    (ctx->op_mode != MFC_OP_SWITCH_BUT_MODE2)) {
+		ctx->cmd_counter++;
+		mfc_debug(2, "[2CORE] cmd_counter : %d\n", ctx->cmd_counter);
+	}
+
 	reg &= ~(0x1 << MFC_REG_D_NAL_START_OPT_TWO_MFC_ENABLE_SHIFT);
 	if (IS_MULTI_MODE(ctx) || ctx->op_mode == MFC_OP_SWITCH_BUT_MODE2)
 		reg |= (1 << MFC_REG_D_NAL_START_OPT_TWO_MFC_ENABLE_SHIFT);
@@ -538,8 +546,11 @@ int mfc_core_cmd_dec_one_frame(struct mfc_core *core, struct mfc_ctx *ctx,
 	} else if (ctx->op_mode == MFC_OP_SWITCHING) {
 		mfc_err("[2CORE] It is a mode that can not operate\n");
 	} else if (ctx->op_mode == MFC_OP_SWITCH_TO_SINGLE) {
-		ctx->cmd_counter++;
+		ctx->last_op_core = core->id;
+		mfc_debug(2, "[2CORE] last_op_core of switch_to_single : %d\n",
+			  ctx->last_op_core);
 	}
+
 	/* If it is switched to single, interrupt lock is not needed. */
 	if (IS_SWITCH_SINGLE_MODE(ctx))
 		mfc_clear_core_intlock(ctx);

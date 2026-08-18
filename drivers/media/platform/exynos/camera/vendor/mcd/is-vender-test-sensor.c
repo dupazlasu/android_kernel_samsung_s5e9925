@@ -240,7 +240,7 @@ int is_vender_test_sensor_cmd_set_sensor_global_test(void __user *user_data)
 		goto EXIT;
 	}
 
-	global = vmalloc(sizeof(u32) * global_data.size);
+	global = pablo_malloc(sizeof(u32) * global_data.size, GFP_KERNEL);
 
 	if (copy_from_user((void *)global, global_data.global, sizeof(u32) * global_data.size)) {
 		err("%s : failed to copy data from user", __func__);
@@ -249,7 +249,7 @@ int is_vender_test_sensor_cmd_set_sensor_global_test(void __user *user_data)
 	}
 
 	if (gls[sensor_id] != NULL)
-		vfree(gls[sensor_id]);
+		pablo_free(gls[sensor_id]);
 
 	gls[sensor_id] = global;
 	gl_sizes[sensor_id] = global_data.size;
@@ -259,7 +259,7 @@ int is_vender_test_sensor_cmd_set_sensor_global_test(void __user *user_data)
 
 EXIT_FREE:
 	if (global)
-		vfree(global);
+		pablo_free(global);
 
 EXIT:
 	return ret;
@@ -312,7 +312,7 @@ int is_vender_test_sensor_cmd_get_sensor_global_test(void __user *user_data)
 	}
 
 	global_data.size = gl_sizes[sensor_id];
-	global = vmalloc(sizeof(u32) * GLOBAL_TEST_MAX_SIZE);
+	global = pablo_malloc(sizeof(u32) * GLOBAL_TEST_MAX_SIZE, GFP_KERNEL);
 	memset(global, 0, sizeof(u32) * GLOBAL_TEST_MAX_SIZE);
 	memcpy(global, gls[sensor_id], sizeof(u32) * global_data.size);
 
@@ -330,7 +330,7 @@ int is_vender_test_sensor_cmd_get_sensor_global_test(void __user *user_data)
 
 EXIT_FREE:
 	if (global)
-		vfree(global);
+		pablo_free(global);
 
 EXIT:
 	return ret;
@@ -381,7 +381,7 @@ int is_vender_test_sensor_cmd_set_sensor_setfile_test(void __user *user_data)
 		goto EXIT;
 	}
 
-	setfile = vmalloc(sizeof(u32) * setfile_data.size);
+	setfile = pablo_malloc(sizeof(u32) * setfile_data.size, GFP_KERNEL);
 
 	if (copy_from_user((void *)setfile, setfile_data.setfile, sizeof(u32) * setfile_data.size)) {
 		err("%s : failed to copy data from user", __func__);
@@ -393,16 +393,16 @@ int is_vender_test_sensor_cmd_set_sensor_setfile_test(void __user *user_data)
 
 		if (sfs[sensor_id] != NULL) {
 			for (i = 0; i < max_size; i++)
-				vfree(sfs[sensor_id][i]);
+				pablo_free(sfs[sensor_id][i]);
 
-			vfree(sfs[sensor_id]);
+			pablo_free(sfs[sensor_id]);
 		}
-		sfs[sensor_id] = vmalloc(sizeof(u32 *) * max_size);
+		sfs[sensor_id] = pablo_malloc(sizeof(u32 *) * max_size, GFP_KERNEL);
 
 		if (sf_sizes[sensor_id] != NULL)
-			vfree(sf_sizes[sensor_id]);
+			pablo_free(sf_sizes[sensor_id]);
 
-		sf_sizes[sensor_id] = vmalloc(sizeof(u32) * max_size);
+		sf_sizes[sensor_id] = pablo_malloc(sizeof(u32) * max_size, GFP_KERNEL);
 	}
 
 	sfs[sensor_id][setfile_data.idx] = setfile;
@@ -412,7 +412,7 @@ int is_vender_test_sensor_cmd_set_sensor_setfile_test(void __user *user_data)
 EXIT_FREE:
 
 	if (setfile)
-		vfree(setfile);
+		pablo_free(setfile);
 
 EXIT:
 	return ret;
@@ -476,7 +476,7 @@ int is_vender_test_sensor_cmd_get_sensor_setfile_test(void __user *user_data)
 	}
 
 	setfile_data.size = sf_sizes[sensor_id][setfile_data.idx];
-	setfile = vmalloc(sizeof(u32) * SETFILE_TEST_MAX_SIZE);
+	setfile = pablo_malloc(sizeof(u32) * SETFILE_TEST_MAX_SIZE, GFP_KERNEL);
 	memset(setfile, 0, sizeof(u32) * SETFILE_TEST_MAX_SIZE);
 	memcpy(setfile, sfs[sensor_id][setfile_data.idx], sizeof(u32) * setfile_data.size);
 
@@ -494,7 +494,7 @@ int is_vender_test_sensor_cmd_get_sensor_setfile_test(void __user *user_data)
 
 EXIT_FREE:
 	if (setfile)
-		vfree(setfile);
+		pablo_free(setfile);
 
 EXIT:
 	return ret;
@@ -520,18 +520,18 @@ int is_vender_test_sensor_cmd_set_sensor_pllinfo_test(void __user *user_data)
 	if (pllinfo_data.idx == 0) {
 		if (pllinfos[sensor_id] != NULL) {
 			for (i = 0; i < max_size; i++)
-				vfree(pllinfos[sensor_id][i]);
+				pablo_free(pllinfos[sensor_id][i]);
 
-			vfree(pllinfos[sensor_id]);
+			pablo_free(pllinfos[sensor_id]);
 		}
 
-		pllinfos[sensor_id] = vmalloc(sizeof(struct sensor_pll_info_compact_test *) * max_size);
+		pllinfos[sensor_id] = pablo_malloc(sizeof(struct sensor_pll_info_compact_test *) * max_size, GFP_KERNEL);
 	}
 
 	if (pllinfos[sensor_id][pllinfo_data.idx] != NULL)
-		vfree(pllinfos[sensor_id][pllinfo_data.idx]);
+		pablo_free(pllinfos[sensor_id][pllinfo_data.idx]);
 
-	pllinfos[sensor_id][pllinfo_data.idx] = vmalloc(sizeof(struct sensor_pll_info_compact_test));
+	pllinfos[sensor_id][pllinfo_data.idx] = pablo_malloc(sizeof(struct sensor_pll_info_compact_test), GFP_KERNEL);
 
 	pllinfos[sensor_id][pllinfo_data.idx]->ext_clk = pllinfo_data.ext_clk;
 	pllinfos[sensor_id][pllinfo_data.idx]->mipi_datarate = pllinfo_data.mipi_datarate;
@@ -637,7 +637,7 @@ int is_vender_caminfo_cmd_set_mipi_phy(void __user *user_data)
 	csi = v4l2_get_subdevdata(sensor->subdev_csi);
 	cis = (struct is_cis *)v4l2_get_subdevdata(sensor_peri->subdev_cis);
 
-	phy_setfile_string = vzalloc(MIPI_PHY_DATA_MAX_SIZE * sizeof(char));
+	phy_setfile_string = pablo_zalloc(MIPI_PHY_DATA_MAX_SIZE * sizeof(char), GFP_KERNEL);
 	if (phy_setfile_string == NULL)
 		return -EFAULT;
 
@@ -705,7 +705,7 @@ int is_vender_caminfo_cmd_set_mipi_phy(void __user *user_data)
 			phy->index, phy->max_lane, token_sub);
 	}
 
-	vfree(phy_setfile_string);
+	pablo_free(phy_setfile_string);
 
 	return ret;
 }
@@ -745,7 +745,7 @@ int is_vender_caminfo_cmd_get_mipi_phy(void __user *user_data)
 
 	phy_num = csi->phy_sf_tbl->sz_comm + csi->phy_sf_tbl->sz_lane;
 
-	phy_setfile_string = vzalloc(MIPI_PHY_DATA_MAX_SIZE * sizeof(char));
+	phy_setfile_string = pablo_zalloc(MIPI_PHY_DATA_MAX_SIZE * sizeof(char), GFP_KERNEL);
 
 	strcpy(phy_setfile_string, sensor_peri->module->sensor_name);
 
@@ -802,7 +802,7 @@ int is_vender_caminfo_cmd_get_mipi_phy(void __user *user_data)
 		ret  = -EINVAL;
 	}
 
-	vfree(phy_setfile_string);
+	pablo_free(phy_setfile_string);
 
 	return ret;
 }

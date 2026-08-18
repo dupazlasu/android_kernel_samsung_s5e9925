@@ -218,7 +218,7 @@ static int flash_aw36518_probe(struct device *dev, struct i2c_client *client)
 		}
 	}
 
-	flash = kzalloc(sizeof(struct is_flash) * sensor_id_len, GFP_KERNEL);
+	flash = pablo_zalloc(sizeof(struct is_flash) * sensor_id_len, GFP_KERNEL);
 	if (!flash) {
 		err("flash is NULL");
 		ret = -ENOMEM;
@@ -226,11 +226,11 @@ static int flash_aw36518_probe(struct device *dev, struct i2c_client *client)
 	}
 
 	subdev_flash =
-		kzalloc(sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
+		pablo_zalloc(sizeof(struct v4l2_subdev) * sensor_id_len, GFP_KERNEL);
 	if (!subdev_flash) {
 		err("subdev_flash is NULL");
 		ret = -ENOMEM;
-		kfree(flash);
+		pablo_free(flash);
 		goto exit;
 	}
 
@@ -243,8 +243,8 @@ static int flash_aw36518_probe(struct device *dev, struct i2c_client *client)
 		flash[i].flash_gpio = of_get_named_gpio(dnode, "flash-gpio", 0);
 		if (!gpio_is_valid(flash[i].flash_gpio)) {
 			dev_err(dev, "failed to get FLASH_GPIO\n");
-			kfree(subdev_flash);
-			kfree(flash);
+			pablo_free(subdev_flash);
+			pablo_free(flash);
 			ret = -EINVAL;
 			goto exit;
 		} else {
@@ -295,8 +295,8 @@ static int flash_aw36518_remove(struct platform_device *pdev)
 	aw36518_fled_mode_ctrl(AW36518_FLED_MODE_OFF, 0);
 	platform_set_drvdata(pdev, NULL);
 
-	kfree(subdev);
-	kfree(flash);
+	pablo_free(subdev);
+	pablo_free(flash);
 
 	return 0;
 }

@@ -80,7 +80,7 @@ static int __nocfi is_hw_lme_open(struct is_hw_ip *hw_ip, u32 instance,
 	frame_manager_probe(hw_ip->framemgr, hw_ip->id, "HWLME");
 	frame_manager_open(hw_ip->framemgr, IS_MAX_HW_FRAME);
 
-	hw_ip->priv_info = vzalloc(sizeof(struct is_hw_lme));
+	hw_ip->priv_info = pablo_zalloc(sizeof(struct is_hw_lme), GFP_KERNEL);
 	if (!hw_ip->priv_info) {
 		mserr_hw("hw_ip->priv_info(null)", instance, hw_ip);
 		ret = -ENOMEM;
@@ -123,7 +123,7 @@ static int __nocfi is_hw_lme_open(struct is_hw_ip *hw_ip, u32 instance,
 #ifdef DDK_LIB_CALL
 err_chain_create:
 err_lib_func:
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 #endif
 err_alloc:
@@ -223,7 +223,7 @@ static int is_hw_lme_close(struct is_hw_ip *hw_ip, u32 instance)
 	del_timer(&hw_ip->lme_frame_end_timer);
 #endif
 
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 	frame_manager_close(hw_ip->framemgr);
 

@@ -25,7 +25,7 @@ static int __nocfi is_hw_3aa_open(struct is_hw_ip *hw_ip, u32 instance,
 	frame_manager_probe(hw_ip->framemgr, hw_ip->id, "HW3AA");
 	frame_manager_open(hw_ip->framemgr, IS_MAX_HW_FRAME);
 
-	hw_ip->priv_info = vzalloc(sizeof(struct is_hw_3aa));
+	hw_ip->priv_info = pablo_zalloc(sizeof(struct is_hw_3aa), GFP_KERNEL);
 	if(!hw_ip->priv_info) {
 		mserr_hw("hw_ip->priv_info(null)", instance, hw_ip);
 		ret = -ENOMEM;
@@ -64,7 +64,7 @@ static int __nocfi is_hw_3aa_open(struct is_hw_ip *hw_ip, u32 instance,
 
 err_chain_create:
 err_lib_func:
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 err_alloc:
 	frame_manager_close(hw_ip->framemgr);
@@ -152,7 +152,7 @@ static int is_hw_3aa_close(struct is_hw_ip *hw_ip, u32 instance)
 	FIMC_BUG(!hw_3aa->lib_support);
 
 	is_lib_isp_chain_destroy(hw_ip, &hw_3aa->lib[instance], instance);
-	vfree(hw_ip->priv_info);
+	pablo_free(hw_ip->priv_info);
 	hw_ip->priv_info = NULL;
 	frame_manager_close(hw_ip->framemgr);
 

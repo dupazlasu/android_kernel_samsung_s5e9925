@@ -13,6 +13,7 @@
 #include <linux/property.h>
 #include <linux/dma-buf.h>
 #include <linux/iommu.h>
+#include <linux/vmalloc.h>
 #include <linux/dma-iommu.h>
 #include <linux/dma-heap.h>
 
@@ -21,6 +22,35 @@
 struct vb2_mem_ops *mfc_mem_ops(void)
 {
 	return (struct vb2_mem_ops *)&vb2_dma_sg_memops;
+}
+
+int mfc_mem_vmem_alloc(struct mfc_dev *dev, void **vmem, size_t size, char *name)
+{
+	if (*vmem) {
+		mfc_dev_info("[MEMINFO][%s] Already vmalloc() allocated\n", name);
+		return 0;
+	}
+
+	*vmem = vmalloc(size);
+	if (!*vmem) {
+		mfc_dev_err("[MEMINFO][%s] Failed to allocate vmalloc()\n", name);
+		return -ENOMEM;
+	}
+
+	mfc_dev_debug(2, "[MEMINFO][%s] allocated\n", name);
+	return 0;
+}
+
+void mfc_mem_vmem_free(struct mfc_dev *dev, void **vmem, char *name)
+{
+	if (!*vmem) {
+		mfc_dev_info("[MEMINFO][%s] hasn't been allocated or already freed\n", name);
+		return;
+	}
+
+	mfc_dev_debug(2, "[MEMINFO][%s] freed\n", name);
+	vfree(*vmem);
+	*vmem = NULL;
 }
 
 int mfc_mem_get_user_shared_handle(struct mfc_ctx *ctx,

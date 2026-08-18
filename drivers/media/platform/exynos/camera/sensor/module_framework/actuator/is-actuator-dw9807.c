@@ -551,7 +551,7 @@ static int sensor_dw9807_actuator_probe(struct i2c_client *client,
 		goto p_err;
 	}
 
-	subdev_actuator = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_actuator = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_actuator) {
 		err("subdev_actuator is NULL");
 		ret = -ENOMEM;
@@ -582,7 +582,7 @@ static int sensor_dw9807_actuator_probe(struct i2c_client *client,
 
 p_err:
 	if (subdev_actuator)
-		kzfree(subdev_actuator);
+		pablo_free(subdev_actuator);
 
 	return ret;
 }

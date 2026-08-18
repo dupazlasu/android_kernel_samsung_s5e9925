@@ -44,7 +44,7 @@ int is_ois_fw_open(struct is_ois *ois, char *name)
 	fsize = fp->f_path.dentry->d_inode->i_size;
 	pr_info("start, file_path: %s, size: %ld Bytes\n", fw_name, fsize);
 
-	buf = vmalloc(fsize);
+	buf = pablo_malloc(fsize, GFP_KERNEL);
 	if (!buf) {
 		err("failed to allocate memory");
 		ret = -ENOMEM;
@@ -91,7 +91,7 @@ request_fw:
 		}
 
 		size = fw_blob->size;
-		buf = vmalloc(size);
+		buf = pablo_malloc(size, GFP_KERNEL);
 		if (!buf) {
 			err("failed to allocate memory");
 			ret = -ENOMEM;
@@ -111,7 +111,7 @@ request_fw:
 p_err:
 
 	if (buf)
-		vfree(buf);
+		pablo_free(buf);
 
 	if (!fw_requested) {
 #ifdef USE_KERNEL_VFS_READ_WRITE

@@ -24,6 +24,7 @@
 
 #include "mfc_sync.h"
 #include "base/mfc_queue.h"
+#include "base/mfc_mem.h"
 
 #define MFC_SFR_AREA_COUNT	24
 #define MFC1_SFR_AREA_COUNT	4
@@ -1223,11 +1224,11 @@ nal_q:
 
 static int __mfc_store_debug_info(struct mfc_core *core)
 {
-	char *buf;
+	char *buf = NULL;
 	int ret = 0;
 
 	if (core->dev->debugfs.sfr_dump & MFC_DUMP_ALL_INFO)
-		buf = vmalloc(MFC_DUMP_BUF_SIZE);
+		mfc_mem_vmem_alloc(core->dev, (void *)&buf, MFC_DUMP_BUF_SIZE, "dbg_info");
 	else
 		buf = core->dbg_info.addr;
 
@@ -1241,7 +1242,7 @@ static int __mfc_store_debug_info(struct mfc_core *core)
 	ret += __mfc_store_dump_regs(core, (buf + ret));
 
 	if (core->dev->debugfs.sfr_dump & MFC_DUMP_ALL_INFO) {
-		vfree(buf);
+		mfc_mem_vmem_free(core->dev, (void *)&buf, "dbg_info");
 		return 0;
 	}
 

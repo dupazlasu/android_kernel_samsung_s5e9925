@@ -18,6 +18,8 @@
 #include <linux/sti/abc_common.h>
 #endif
 
+#include "pablo-mem.h"
+
 #ifdef IS_VIRTUAL_MODULE
 static u8 emul_reg[1024*20] = {0};
 static bool init_reg = false;
@@ -498,7 +500,7 @@ int is_sensor_write16_burst(struct i2c_client *client,
 		goto p_err;
 	}
 
-	wbuf = kmalloc((2 + (num * 2)), GFP_KERNEL);
+	wbuf = pablo_malloc((2 + (num * 2)), GFP_KERNEL);
 	if (!wbuf) {
 		pr_err("failed to alloc buffer for burst i2c\n");
 		ret = -ENODEV;
@@ -523,11 +525,11 @@ int is_sensor_write16_burst(struct i2c_client *client,
 	}
 
 	i2c_info("I2CW16(%d) [0x%04x] : 0x%04x\n", client->addr, addr, *val);
-	kfree(wbuf);
+	pablo_free(wbuf);
 	return 0;
 
 p_err_free:
-	kfree(wbuf);
+	pablo_free(wbuf);
 p_err:
 	return ret;
 }
@@ -553,7 +555,7 @@ int is_sensor_write8_sequential(struct i2c_client *client,
 		goto p_err;
 	}
 
-	wbuf = kzalloc((2 + (num * 2)), GFP_KERNEL);
+	wbuf = pablo_zalloc((2 + (num * 2)), GFP_KERNEL);
 	if (!wbuf) {
 		pr_err("failed to alloc buffer for burst i2c\n");
 		ret = -ENODEV;
@@ -577,11 +579,11 @@ int is_sensor_write8_sequential(struct i2c_client *client,
 	}
 
 	i2c_info("I2CW08(%d) [0x%04x] : 0x%04x\n", client->addr, addr, *val);
-	kfree(wbuf);
+	pablo_free(wbuf);
 	return 0;
 
 p_err_free:
-	kfree(wbuf);
+	pablo_free(wbuf);
 p_err:
 	return ret;
 }
@@ -607,7 +609,7 @@ int is_sensor_write8_burst(struct i2c_client *client,
 		goto p_err;
 	}
 
-	wbuf = kmalloc((2 + num), GFP_KERNEL);
+	wbuf = pablo_malloc((2 + num), GFP_KERNEL);
 	if (!wbuf) {
 		pr_err("failed to alloc buffer for burst i2c\n");
 		ret = -ENODEV;
@@ -631,10 +633,10 @@ int is_sensor_write8_burst(struct i2c_client *client,
 	}
 
 	i2c_info("I2CW8(%d) [0x%04x] : 0x%04x\n", client->addr, addr, *val);
-	kfree(wbuf);
+	pablo_free(wbuf);
 	return 0;
 p_err_free:
-	kfree(wbuf);
+	pablo_free(wbuf);
 p_err:
 	return ret;
 }

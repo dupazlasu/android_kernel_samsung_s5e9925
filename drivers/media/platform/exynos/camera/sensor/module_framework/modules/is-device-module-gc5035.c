@@ -220,7 +220,7 @@ int sensor_module_gc5035_probe(struct platform_device *pdev)
 	pdata = dev_get_platdata(dev);
 	device = &core->sensor[pdata->id];
 
-	subdev_module = kzalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
+	subdev_module = pablo_zalloc(sizeof(struct v4l2_subdev), GFP_KERNEL);
 	if (!subdev_module) {
 		probe_err("subdev_module is NULL");
 		ret = -ENOMEM;
@@ -259,7 +259,7 @@ int sensor_module_gc5035_probe(struct platform_device *pdev)
 	module->cfg = config_gc5035;
 	module->ops = NULL;
 	/* Sensor peri */
-	module->private_data = kzalloc(sizeof(struct is_device_sensor_peri), GFP_KERNEL);
+	module->private_data = pablo_zalloc(sizeof(struct is_device_sensor_peri), GFP_KERNEL);
 	if (!module->private_data) {
 		probe_err("is_device_sensor_peri is NULL");
 		ret = -ENOMEM;

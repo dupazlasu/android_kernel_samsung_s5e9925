@@ -79,7 +79,7 @@ static int sensor_eeprom_probe(struct i2c_client *client,
 		return -ENODEV;
 	}
 
-	eeprom = kzalloc(sizeof(struct is_device_eeprom), GFP_KERNEL);
+	eeprom = pablo_zalloc(sizeof(struct is_device_eeprom), GFP_KERNEL);
 	if (!eeprom) {
 		probe_err("is_device_eeprom is NULL");
 		return -ENOMEM;
@@ -94,7 +94,7 @@ static int sensor_eeprom_probe(struct i2c_client *client,
 	if (client->dev.of_node) {
 		if(is_vendor_rom_parse_dt(client->dev.of_node, eeprom->driver_data)) {
 			probe_err("parsing device tree is fail");
-			kfree(eeprom);
+			pablo_free(eeprom);
 			return -ENODEV;
 		}
 	}

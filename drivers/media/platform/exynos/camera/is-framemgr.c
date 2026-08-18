@@ -301,9 +301,9 @@ int frame_manager_open(struct is_framemgr *this, u32 buffers)
 	 * each video node was opened.
 	 */
 	if (this->frames)
-		vfree(this->frames);
+		pablo_free(this->frames);
 
-	this->frames = vzalloc(sizeof(struct is_frame) * buffers);
+	this->frames = pablo_zalloc(sizeof(struct is_frame) * buffers, GFP_KERNEL);
 	if (!this->frames) {
 		err("failed to allocate frames");
 		return -ENOMEM;

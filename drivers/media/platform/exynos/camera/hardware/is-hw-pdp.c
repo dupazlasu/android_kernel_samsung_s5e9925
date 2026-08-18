@@ -753,7 +753,7 @@ int pdp_register_notifier(struct v4l2_subdev *subdev, enum itf_vc_stat_type type
 	case VC_STAT_TYPE_PDP_4_0_PDAF_STAT1:
 	case VC_STAT_TYPE_PDP_4_1_PDAF_STAT0:
 	case VC_STAT_TYPE_PDP_4_1_PDAF_STAT1:
-		pa = kzalloc(sizeof(struct paf_action), GFP_ATOMIC);
+		pa = pablo_zalloc(sizeof(struct paf_action), GFP_ATOMIC);
 		if (!pa) {
 			err_lib("failed to allocate a PAF action");
 			return -ENOMEM;
@@ -809,7 +809,7 @@ int pdp_unregister_notifier(struct v4l2_subdev *subdev, enum itf_vc_stat_type ty
 			if ((pa->notifier == notifier)
 					&& (pa->type == type)) {
 				list_del(&pa->list);
-				kfree(pa);
+				pablo_free(pa);
 			}
 		}
 		spin_unlock_irqrestore(&pdp->slock_paf_action, flag);
@@ -1481,7 +1481,7 @@ static int is_hw_pdp_close(struct is_hw_ip *hw_ip, u32 instance)
 		list_for_each_entry_safe(pa, temp,
 				&pdp->list_of_paf_action, list) {
 			list_del(&pa->list);
-			kfree(pa);
+			pablo_free(pa);
 		}
 		spin_unlock_irqrestore(&pdp->slock_paf_action, flag);
 	}
@@ -2491,7 +2491,7 @@ static int pdp_probe(struct platform_device *pdev)
 	hw_ip->regs[REG_SETA] = pdp->base;
 
 	reg_size = (hw_ip->regs_end[REG_SETA] - hw_ip->regs_start[REG_SETA] + 1);
-	hw_ip->sfr_dump[REG_SETA] = kzalloc(reg_size, GFP_KERNEL);
+	hw_ip->sfr_dump[REG_SETA] = pablo_zalloc(reg_size, GFP_KERNEL);
 	if (IS_ERR_OR_NULL(hw_ip->sfr_dump[REG_SETA])) {
 		serr_hw("sfr dump memory alloc fail", hw_ip);
 		goto err_sfr_dump_alloc;
@@ -2643,7 +2643,7 @@ err_get_en_base:
 err_get_mux_base:
 	devm_iounmap(dev, pdp->cmn_base);
 err_get_cmn_base:
-	kfree(hw_ip->sfr_dump[REG_SETA]);
+	pablo_free(hw_ip->sfr_dump[REG_SETA]);
 err_sfr_dump_alloc:
 	devm_iounmap(dev, pdp->base);
 err_ioremap:
