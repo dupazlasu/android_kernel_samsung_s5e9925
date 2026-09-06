@@ -49,11 +49,11 @@ echo "Preparing the build environment..."
 pushd "$(dirname "$0")" > /dev/null || exit 1
 
 # Define toolchain variables
-CLANG_DIR="$(pwd)/toolchain/clang-r596125"
+CLANG_DIR="$(pwd)/toolchain/clang-r614150"
 PATH="$CLANG_DIR/bin:$PATH"
 
 # Check if toolchain exists
-if [[ ! -f "$CLANG_DIR/bin/clang-22" ]]; then
+if [[ ! -f "$CLANG_DIR/bin/clang-23" ]]; then
     echo "-----------------------------------------------"
     echo "Toolchain not found! Downloading..."
     echo "-----------------------------------------------"
@@ -62,7 +62,7 @@ if [[ ! -f "$CLANG_DIR/bin/clang-22" ]]; then
     fi
     mkdir -p "$CLANG_DIR"
 
-    curl -L -o "$CLANG_DIR/clang.tar.gz" "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/mirror-goog-main-llvm-toolchain-source/clang-r596125.tar.gz" || {
+    curl -L -o "$CLANG_DIR/clang.tar.gz" "https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86/+archive/mirror-goog-main-llvm-toolchain-source/clang-r614150.tar.gz" || {
         echo "Failed to download clang"
         exit 1
     }
